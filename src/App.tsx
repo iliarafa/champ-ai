@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Settings, Plus, Send, Square, Globe, Trash2, Edit2, Copy, Check, Paperclip, Download } from 'lucide-react'
+import { Settings, Plus, Send, Square, Globe, Trash2, Edit2, Copy, Check, Paperclip, Download, ArrowRightLeft } from 'lucide-react'
 import { useSettings } from '@/state/settings'
 import { useThreads } from '@/state/threads'
 import { Button } from '@/components/ui/button'
@@ -7,7 +7,7 @@ import { SettingsModal } from '@/components/SettingsModal'
 import { Modal } from '@/components/ui/modal'
 import { Markdown } from '@/lib/markdown'
 import { cn, getTextFromContent } from '@/lib/utils'
-import { exportConversation, type ExportFormat } from '@/lib/exportConversation'
+import { exportConversation, exportAsHandoff, type ExportFormat } from '@/lib/exportConversation'
 
 /**
  * Resize + compress image before sending to LLM.
@@ -201,6 +201,16 @@ export default function App() {
     }
   }
 
+  function handleHandoff() {
+    if (!currentThread || messages.length === 0) return
+    try {
+      exportAsHandoff(currentThread, messages, settings.systemPrompt)
+    } catch (e) {
+      console.error('Handoff failed', e)
+      alert('Handoff failed. See console for details.')
+    }
+  }
+
   if (!hydrated) {
     return <div className="h-screen flex items-center justify-center text-muted-foreground">Loading…</div>
   }
@@ -260,6 +270,15 @@ export default function App() {
             disabled={!currentThread || messages.length === 0}
           >
             <Download className="size-4" /> Export
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleHandoff}
+            disabled={!currentThread || messages.length === 0}
+            title="Create a handoff document with full context + images for continuing in a new thread"
+          >
+            <ArrowRightLeft className="size-4" /> Handoff
           </Button>
           <Button variant="outline" size="icon-sm" onClick={() => setSettingsOpen(true)} aria-label="Settings">
             <Settings className="size-4" />

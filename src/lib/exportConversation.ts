@@ -298,3 +298,80 @@ function triggerDownload(filename: string, blob: Blob) {
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
+
+/* ----------------------------- HANDOFF Export ----------------------------- */
+/**
+ * Generates a special Markdown document designed for handing off the full
+ * conversation context (including images) to a new thread / different model.
+ * The output is optimized for pasting into another LLM to continue seamlessly.
+ */
+export function exportAsHandoff(
+  thread: Thread,
+  messages: Message[],
+  systemPrompt?: string
+) {
+  const lines: string[] = []
+
+  // Header
+  lines.push('# HANDOFF — Continue this conversation')
+  lines.push('')
+  lines.push('Copy everything below (including any images) and paste it as the **first message** in a new chat to resume this exact conversation with full context.')
+  lines.push('')
+  lines.push('---')
+  lines.push('')
+
+  // Metadata
+  lines.push(`**Original Thread:** ${thread.title}`)
+  lines.push(`**Created:** ${new Date(thread.createdAt).toLocaleString()}`)
+  lines.push(`**Last updated:** ${new Date(thread.updatedAt).toLocaleString()}`)
+  lines.push(`**Total messages:** ${messages.length}`)
+  lines.push('')
+
+  // System prompt (very important for context)
+  if (systemPrompt && systemPrompt.trim()) {
+    lines.push('## System Prompt')
+    lines.push('')
+    lines.push('```')
+    lines.push(systemPrompt.trim())
+    lines.push('```')
+    lines.push('')
+  } else {
+    lines.push('*(No custom system prompt was used in the original thread)*')
+    lines.push('')
+  }
+
+  lines.push('## Full Conversation History')
+  lines.push('')
+
+  for (const msg of messages) {
+    const role = msg.role === 'user' ? 'User' : 'Assistant'
+    const time = new Date(msg.createdAt).toLocaleString()
+
+    lines.push(`### ${role} — ${time}`)
+    lines.push('')
+
+    const text = getTextParts(msg.content)
+    if (text) {
+      lines.push(text)
+      lines.push('')
+    }
+
+    // Embed images so they travel with the handoff
+    const images = getImageParts(msg.content)
+    for (const img of images) {
+      const dataUri = `data:${img.mediaType};base64,${img.data}`
+      lines.push(`![attached image](${dataUri})`)
+      lines.push('')
+    }
+
+    lines.push('---')
+    lines.push('')
+  }
+
+  lines.push('**End of handoff context.**')
+  lines.push('')
+  lines.push('Now continue the conversation naturally from the last message above.')
+
+  const filename = `Handoff_${sanitizeFilename(thread.title)}.md`
+  downloadTextFile(filename, lines.join('\n'), 'text/markdown')
+}
