@@ -1,11 +1,65 @@
 import { useEffect, useRef, useState } from 'react'
-import { Settings, Plus, Send, Square, Globe, Trash2, Edit2, Copy, Check } from 'lucide-react'
+import { Settings, Plus, Send, Square, Globe, Trash2, Edit2, Copy, Check, Paperclip } from 'lucide-react'
 import { useSettings } from '@/state/settings'
 import { useThreads } from '@/state/threads'
 import { Button } from '@/components/ui/button'
 import { SettingsModal } from '@/components/SettingsModal'
 import { Markdown } from '@/lib/markdown'
-import { cn } from '@/lib/utils'
+import { cn, getTextFromContent } from '@/lib/utils'
+
+/**
+ * Resize + compress image before sending to LLM.
+ * Keeps aspect ratio. Max dimension on longest side.
+ * Uses JPEG for good compression.
+ */
+async function processImageForUpload(
+  file: File, 
+  maxSize = 1280, 
+  quality = 0.85
+): Promise<{ mediaType: string; data: string; preview: string }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    
+    img.onload = () => {
+      let { width, height } = img
+
+      // Resize if needed
+      if (width > maxSize || height > maxSize) {
+        if (width > height) {
+          height = Math.round((height * maxSize) / width)
+          width = maxSize
+        } else {
+          width = Math.round((width * maxSize) / height)
+          height = maxSize
+        }
+      }
+
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      
+      const ctx = canvas.getContext('2d', { alpha: false })!
+      ctx.drawImage(img, 0, 0, width, height)
+
+      // Convert to JPEG for compression
+      const dataUrl = canvas.toDataURL('image/jpeg', quality)
+      const match = dataUrl.match(/^data:(.+);base64,(.+)$/)
+      
+      if (!match) {
+        return reject(new Error('Failed to process image'))
+      }
+
+      resolve({
+        mediaType: match[1],
+        data: match[2],
+        preview: dataUrl,
+      })
+    }
+
+    img.onerror = () => reject(new Error('Failed to load image'))
+    img.src = URL.createObjectURL(file)
+  })
+}
 
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -13,6 +67,7 @@ export default function App() {
   const [titleInput, setTitleInput] = useState('')
   const [webSearch, setWebSearch] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [attachments, setAttachments] = useState<Array<{ id: string; mediaType: string; data: string; preview: string }>>([])
 
   const settings = useSettings()
   const {
@@ -63,10 +118,15 @@ export default function App() {
 
   async function handleSend() {
     const text = input.trim()
-    if (!text || isStreaming || !hasKey) return
+    if ((!text && attachments.length === 0) || isStreaming || !hasKey) return
+
+    const atts = attachments.map((a) => ({ mediaType: a.mediaType, data: a.data }))
+
     setInput('')
-    await sendMessage(text, { webSearch })
+    setAttachments([])
     setWebSearch(false)
+
+    await sendMessage(text, { webSearch, attachments: atts })
     requestAnimationFrame(() => inputRef.current?.focus())
   }
 
@@ -217,16 +277,32 @@ export default function App() {
                         )}
                       >
                         {isUser ? (
-                          <div className="whitespace-pre-wrap">{m.content}</div>
+                          <div>
+                            {/* Images */}
+                            {m.content
+                              .filter((p): p is { type: 'image'; mediaType: string; data: string } => p.type === 'image')
+                              .map((img, i) => (
+                                <img
+                                  key={i}
+                                  src={`data:${img.mediaType};base64,${img.data}`}
+                                  alt="Attached"
+                                  className="max-h-64 rounded-lg mb-2 border border-white/20"
+                                />
+                              ))}
+                            {/* Text */}
+                            <div className="whitespace-pre-wrap">
+                              {getTextFromContent(m.content)}
+                            </div>
+                          </div>
                         ) : (
-                          <Markdown text={m.content || (isStreaming ? '▌' : '')} />
+                          <Markdown text={getTextFromContent(m.content) || (isStreaming ? '▌' : '')} />
                         )}
                       </div>
 
                       {/* Actions */}
                       <div className="mt-1 flex gap-1 opacity-0 group-hover:opacity-100 transition text-xs">
                         <button
-                          onClick={() => void handleCopy(m.content, m.id)}
+                          onClick={() => void handleCopy(getTextFromContent(m.content), m.id)}
                           className="flex items-center gap-1 px-2 py-0.5 rounded hover:bg-muted text-muted-foreground"
                         >
                           {copiedId === m.id ? <Check className="size-3" /> : <Copy className="size-3" />} Copy
@@ -234,7 +310,8 @@ export default function App() {
                         {isUser && (
                           <button
                             onClick={() => {
-                              const newText = prompt('Edit message', m.content)
+                              const currentText = getTextFromContent(m.content)
+                              const newText = prompt('Edit message', currentText)
                               if (newText != null) void editAndResend(m.id, newText)
                             }}
                             className="px-2 py-0.5 rounded hover:bg-muted text-muted-foreground"
@@ -265,6 +342,29 @@ export default function App() {
           {/* Prompt Bar */}
           <div className="border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div className="max-w-3xl mx-auto">
+              {/* Attachments preview */}
+              {attachments.length > 0 && (
+                <div className="flex gap-2 mb-2 flex-wrap">
+                  {attachments.map((att) => (
+                    <div key={att.id} className="relative group">
+                      <img
+                        src={att.preview}
+                        alt="preview"
+                        className="h-14 w-14 object-cover rounded-lg border"
+                      />
+                      <button
+                        onClick={() =>
+                          setAttachments((prev) => prev.filter((a) => a.id !== att.id))
+                        }
+                        className="absolute -top-1 -right-1 bg-black/70 hover:bg-black text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] opacity-80 group-hover:opacity-100"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="flex gap-2 items-end">
                 <textarea
                   ref={inputRef}
@@ -278,6 +378,31 @@ export default function App() {
                 />
 
                 <div className="flex flex-col gap-1.5">
+                  {/* Attach photos */}
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    onClick={() => {
+                      const input = document.createElement('input')
+                      input.type = 'file'
+                      input.accept = 'image/*'
+                      input.multiple = true
+                      input.onchange = async (e) => {
+                        const files = Array.from((e.target as HTMLInputElement).files || [])
+                        const newAtts = await Promise.all(files.map((f) => processImageForUpload(f)))
+                        setAttachments((prev) => [
+                          ...prev,
+                          ...newAtts.map((a) => ({ id: crypto.randomUUID(), ...a })),
+                        ])
+                      }
+                      input.click()
+                    }}
+                    disabled={isStreaming || !hasKey}
+                    title="Attach photos"
+                  >
+                    <Paperclip className="size-4" />
+                  </Button>
+
                   <Button
                     variant={webSearch ? 'default' : 'outline'}
                     size="icon-sm"
@@ -294,7 +419,11 @@ export default function App() {
                       <Square className="size-4" />
                     </Button>
                   ) : (
-                    <Button size="icon-sm" onClick={() => void handleSend()} disabled={!input.trim() || !hasKey}>
+                    <Button
+                      size="icon-sm"
+                      onClick={() => void handleSend()}
+                      disabled={(!input.trim() && attachments.length === 0) || !hasKey}
+                    >
                       <Send className="size-4" />
                     </Button>
                   )}

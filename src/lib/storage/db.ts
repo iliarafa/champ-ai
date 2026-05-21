@@ -19,11 +19,15 @@ export interface Thread {
 
 export type MessageRole = 'user' | 'assistant'
 
+export type MessageContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image'; mediaType: string; data: string } // base64 without data: prefix
+
 export interface Message {
   id: string
   threadId: string
   role: MessageRole
-  content: string
+  content: MessageContentPart[]
   createdAt: number
 }
 

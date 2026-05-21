@@ -20,11 +20,36 @@ export async function* streamOpenAICompat(req: StreamRequest): AsyncGenerator<St
   const base = req.baseURL.replace(/\/+$/, '')
   const url = `${base}/chat/completions`
 
-  const messages: StreamRequest['messages'] = []
+  const messages = req.messages.map((m) => {
+    if (typeof m.content === 'string') {
+      return { role: m.role, content: m.content }
+    }
+
+    // Convert our MessageContentPart[] to OpenAI vision format
+    const parts = m.content.map((part) => {
+      if (part.type === 'text') {
+        return { type: 'text', text: part.text }
+      }
+      if (part.type === 'image') {
+        return {
+          type: 'image_url',
+          image_url: {
+            url: `data:${part.mediaType};base64,${part.data}`,
+          },
+        }
+      }
+      return part
+    })
+
+    return {
+      role: m.role,
+      content: parts.length === 1 && parts[0].type === 'text' ? parts[0].text : parts,
+    }
+  })
+
   if (req.systemPrompt && req.systemPrompt.trim()) {
-    messages.push({ role: 'system', content: req.systemPrompt.trim() })
+    messages.unshift({ role: 'system', content: req.systemPrompt.trim() })
   }
-  messages.push(...req.messages)
 
   const body: Record<string, unknown> = {
     model: req.model,
@@ -32,8 +57,7 @@ export async function* streamOpenAICompat(req: StreamRequest): AsyncGenerator<St
     messages,
   }
 
-  // Web search support (primarily for xAI/Grok; most other OpenAI-compatible
-  // servers safely ignore unknown top-level keys)
+  // Web search support (primarily for xAI/Grok)
   if (req.webSearchEnabled) {
     body.search_parameters = { mode: 'on' }
   }

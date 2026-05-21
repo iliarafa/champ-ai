@@ -1,9 +1,14 @@
+import type { MessageContentPart } from '@/lib/storage/db'
+
 export interface StreamRequest {
   apiKey: string
   baseURL: string
   model: string
   systemPrompt?: string
-  messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>
+  messages: Array<{
+    role: 'user' | 'assistant' | 'system'
+    content: string | MessageContentPart[]
+  }>
   webSearchEnabled?: boolean
   signal?: AbortSignal
 }

@@ -9,9 +9,11 @@ import {
   updateThreadTitle,
   type Message,
   type Thread,
+  type MessageContentPart,
 } from '@/lib/storage/db'
 import { useSettings } from './settings'
 import { streamOpenAICompat, ProviderError } from '@/lib/providers'
+import { getTextFromContent } from '@/lib/utils'
 
 export interface ThreadsState {
   hydrated: boolean
@@ -25,7 +27,13 @@ export interface ThreadsState {
   hydrate: () => Promise<void>
   newChat: () => Promise<void>
   switchThread: (id: string) => Promise<void>
-  sendMessage: (text: string, opts?: { webSearch?: boolean }) => Promise<void>
+  sendMessage: (
+    text: string,
+    opts?: {
+      webSearch?: boolean
+      attachments?: Array<{ mediaType: string; data: string }>
+    }
+  ) => Promise<void>
   cancel: () => void
   regenerateLast: () => Promise<void>
   editAndResend: (messageId: string, newText: string) => Promise<void>
@@ -71,7 +79,7 @@ export const useThreads = create<ThreadsState>((set, get) => ({
         id: newId(),
         threadId: currentId,
         role: 'assistant',
-        content: 'Welcome to Champ Ai. Add your LLM API key in Settings and start chatting.',
+        content: [{ type: 'text', text: 'Welcome to Champ Ai. Add your LLM API key in Settings and start chatting.' }],
         createdAt: Date.now(),
       }
       await persistMessages(currentId, [welcomeMsg])
@@ -118,7 +126,8 @@ export const useThreads = create<ThreadsState>((set, get) => ({
 
   async sendMessage(text, opts = {}) {
     const trimmed = text.trim()
-    if (!trimmed || get().isStreaming) return
+    const attachments = opts.attachments ?? []
+    if ((!trimmed && attachments.length === 0) || get().isStreaming) return
 
     const settings = useSettings.getState()
     if (!settings.apiKey) {
@@ -134,21 +143,28 @@ export const useThreads = create<ThreadsState>((set, get) => ({
     const threadId = get().currentThreadId!
     const now = Date.now()
 
+    const userContent: MessageContentPart[] = []
+    if (trimmed) userContent.push({ type: 'text', text: trimmed })
+    attachments.forEach((att) => {
+      userContent.push({ type: 'image', mediaType: att.mediaType, data: att.data })
+    })
+
     const userMsg: Message = {
       id: newId(),
       threadId,
       role: 'user',
-      content: trimmed,
+      content: userContent,
       createdAt: now,
     }
 
     let msgs = [...get().messages, userMsg]
     set({ messages: msgs, error: null })
 
-    // Auto-title from first user message
+    // Auto-title from first user message (use first text part)
+    const firstText = userContent.find((p) => p.type === 'text')?.text ?? ''
     const thread = get().threads.find((t) => t.id === threadId)
-    if (thread && thread.title === 'New chat') {
-      const title = deriveTitle(trimmed)
+    if (thread && thread.title === 'New chat' && firstText) {
+      const title = deriveTitle(firstText)
       await updateThreadTitle(threadId, title)
       set({
         threads: get().threads.map((t) => (t.id === threadId ? { ...t, title } : t)),
@@ -159,7 +175,7 @@ export const useThreads = create<ThreadsState>((set, get) => ({
       id: newId(),
       threadId,
       role: 'assistant',
-      content: '',
+      content: [{ type: 'text', text: '' }],
       createdAt: now + 1,
     }
     msgs = [...msgs, assistantMsg]
@@ -172,7 +188,7 @@ export const useThreads = create<ThreadsState>((set, get) => ({
     abortController = new AbortController()
     const signal = abortController.signal
 
-    // Build history for the request (simple alternating)
+    // Build history for the request
     const history = msgs
       .filter((m) => m.id !== assistantMsg.id)
       .map((m) => ({ role: m.role, content: m.content }))
@@ -183,7 +199,7 @@ export const useThreads = create<ThreadsState>((set, get) => ({
         baseURL: settings.baseURL,
         model: settings.model,
         systemPrompt: settings.systemPrompt || undefined,
-        messages: history as any,
+        messages: history,
         webSearchEnabled: opts.webSearch,
         signal,
       })) {
@@ -193,7 +209,20 @@ export const useThreads = create<ThreadsState>((set, get) => ({
         if (idx === -1) break
 
         if (evt.type === 'text-delta') {
-          const updated = { ...current[idx], content: current[idx].content + evt.text }
+          const currentAssistant = current[idx]
+          const lastPart = currentAssistant.content[currentAssistant.content.length - 1]
+
+          let updatedContent: MessageContentPart[]
+          if (lastPart && lastPart.type === 'text') {
+            updatedContent = [
+              ...currentAssistant.content.slice(0, -1),
+              { type: 'text', text: lastPart.text + evt.text },
+            ]
+          } else {
+            updatedContent = [...currentAssistant.content, { type: 'text', text: evt.text }]
+          }
+
+          const updated = { ...currentAssistant, content: updatedContent }
           const next = [...current.slice(0, idx), updated, ...current.slice(idx + 1)]
           set({ messages: next })
         } else if (evt.type === 'error') {
@@ -214,8 +243,15 @@ export const useThreads = create<ThreadsState>((set, get) => ({
       const finalIdx = finalMsgs.findIndex((m) => m.id === assistantMsg.id)
 
       // Drop empty assistant placeholder on failure
+      const finalAssistant = finalIdx !== -1 ? finalMsgs[finalIdx] : null
+      const isEmptyAssistant =
+        finalAssistant &&
+        finalAssistant.content.length === 1 &&
+        finalAssistant.content[0].type === 'text' &&
+        !finalAssistant.content[0].text.trim()
+
       const cleaned =
-        finalIdx !== -1 && !finalMsgs[finalIdx].content
+        finalIdx !== -1 && isEmptyAssistant
           ? finalMsgs.filter((_, i) => i !== finalIdx)
           : finalMsgs
 
@@ -250,8 +286,8 @@ export const useThreads = create<ThreadsState>((set, get) => ({
 
     const lastUser = [...withoutLast].reverse().find((m) => m.role === 'user')
     if (lastUser) {
-      // re-trigger send with same text (webSearch not remembered for regen; simple)
-      await get().sendMessage(lastUser.content)
+      const text = getTextFromContent(lastUser.content)
+      await get().sendMessage(text)
     }
   },
 
@@ -260,7 +296,13 @@ export const useThreads = create<ThreadsState>((set, get) => ({
     const idx = msgs.findIndex((m) => m.id === messageId)
     if (idx === -1 || msgs[idx].role !== 'user' || get().isStreaming) return
 
-    const edited = { ...msgs[idx], content: newText.trim() }
+    const original = msgs[idx]
+    const nonTextParts = original.content.filter((p) => p.type !== 'text')
+    const editedContent: MessageContentPart[] = [
+      ...nonTextParts,
+      ...(newText.trim() ? [{ type: 'text' as const, text: newText.trim() }] : []),
+    ]
+    const edited = { ...original, content: editedContent }
     const truncated = msgs.slice(0, idx + 1).map((m, i) => (i === idx ? edited : m))
 
     set({ messages: truncated, error: null })
@@ -283,7 +325,7 @@ export const useThreads = create<ThreadsState>((set, get) => ({
         id: newId(),
         threadId: t.id,
         role: 'assistant',
-        content: 'New chat started.',
+        content: [{ type: 'text', text: 'New chat started.' }],
         createdAt: Date.now(),
       }
       await persistMessages(t.id, [welcome])
