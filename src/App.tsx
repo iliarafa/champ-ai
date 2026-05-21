@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/modal'
 import { Markdown } from '@/lib/markdown'
 import { cn, getTextFromContent } from '@/lib/utils'
 import { exportConversation, exportAsHandoff, type ExportFormat } from '@/lib/exportConversation'
+import { loadMessages } from '@/lib/storage/db'
 
 /**
  * Resize + compress image before sending to LLM.
@@ -191,20 +192,26 @@ export default function App() {
   }
 
   async function handleExport(format: ExportFormat) {
-    if (!currentThread || messages.length === 0) return
+    if (!currentThread) return
     setExportOpen(false)
     try {
-      await exportConversation(currentThread, messages, format)
+      // Always load the complete latest messages from storage
+      const freshMessages = await loadMessages(currentThread.id)
+      if (freshMessages.length === 0) return
+      await exportConversation(currentThread, freshMessages, format)
     } catch (e) {
       console.error('Export failed', e)
       alert('Export failed. See console for details.')
     }
   }
 
-  function handleHandoff() {
-    if (!currentThread || messages.length === 0) return
+  async function handleHandoff() {
+    if (!currentThread) return
     try {
-      exportAsHandoff(currentThread, messages, settings.systemPrompt)
+      // Always load the complete latest messages from storage to guarantee the full dialogue
+      const freshMessages = await loadMessages(currentThread.id)
+      if (freshMessages.length === 0) return
+      exportAsHandoff(currentThread, freshMessages, settings.systemPrompt)
     } catch (e) {
       console.error('Handoff failed', e)
       alert('Handoff failed. See console for details.')

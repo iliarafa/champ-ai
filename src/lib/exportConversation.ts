@@ -319,7 +319,9 @@ export function exportAsHandoff(
   // Header
   lines.push('# HANDOFF — Continue this conversation')
   lines.push('')
-  lines.push('Copy everything below (including any images) and paste it as the **first message** in a new chat to resume this exact conversation with full context.')
+  lines.push('Copy everything below and paste it as the **first message** in a new chat (in this app or another LLM) to resume the conversation with full context.')
+  lines.push('')
+  lines.push('> **Note:** Any images that were attached in the original thread are marked below (e.g. `[1 image attached]`). The actual image files are not embedded in this document (to keep the file reasonably sized and pasteable). You will need to re-upload the relevant images in the new thread if you want the model to see them.')
   lines.push('')
   lines.push('---')
   lines.push('')
@@ -360,11 +362,14 @@ export function exportAsHandoff(
       lines.push('')
     }
 
-    // Embed images so they travel with the handoff
+    // Note attached images without embedding huge base64 data
+    // (embedding large images was causing the document to truncate)
     const images = getImageParts(msg.content)
-    for (const img of images) {
-      const dataUri = `data:${img.mediaType};base64,${img.data}`
-      lines.push(`![attached image](${dataUri})`)
+    if (images.length > 0) {
+      const label = images.length === 1
+        ? '[1 image attached]'
+        : `[${images.length} images attached]`
+      lines.push(`*${label}*`)
       lines.push('')
     }
 
@@ -374,7 +379,7 @@ export function exportAsHandoff(
 
   lines.push('**End of handoff context.**')
   lines.push('')
-  lines.push('Now continue the conversation naturally from the last message above.')
+  lines.push('Now continue the conversation naturally from the last message above. Remember to re-upload any relevant images if needed.')
 
   const filename = `Handoff_${sanitizeFilename(thread.title)}.md`
   downloadTextFile(filename, lines.join('\n'), 'text/markdown')
