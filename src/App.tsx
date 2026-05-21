@@ -359,9 +359,10 @@ export default function App() {
           <div ref={listRef} className="flex-1 overflow-y-auto">
             <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
               {messages.length === 0 && (
-                <div className="text-center py-16 text-muted-foreground">
-                  <div className="text-2xl mb-3">Start a conversation</div>
-                  <p className="text-sm">Add your API key in Settings to begin.</p>
+                <div className="flex h-[55vh] items-center justify-center">
+                  <div className="text-6xl font-light tracking-[-2.5px] text-muted-foreground/20 select-none">
+                    Let's Play!
+                  </div>
                 </div>
               )}
 

@@ -73,18 +73,10 @@ export const useThreads = create<ThreadsState>((set, get) => ({
       currentId = threads[0].id
       msgs = await loadMessages(currentId)
     } else {
-      // Create a welcome thread on first run
+      // Create a fresh empty thread on first run
       const welcome = await createThread('Welcome')
       currentId = welcome.id
-      const welcomeMsg: Message = {
-        id: newId(),
-        threadId: currentId,
-        role: 'assistant',
-        content: [{ type: 'text', text: 'Welcome to Champ Ai. Add your LLM API key in Settings and start chatting.' }],
-        createdAt: Date.now(),
-      }
-      await persistMessages(currentId, [welcomeMsg])
-      msgs = [welcomeMsg]
+      msgs = []
     }
 
     set({
@@ -342,18 +334,10 @@ export const useThreads = create<ThreadsState>((set, get) => ({
     const remaining = get().threads.filter((t) => t.id !== id)
     if (remaining.length === 0) {
       const t = await createThread('New chat')
-      const welcome: Message = {
-        id: newId(),
-        threadId: t.id,
-        role: 'assistant',
-        content: [{ type: 'text', text: 'New chat started.' }],
-        createdAt: Date.now(),
-      }
-      await persistMessages(t.id, [welcome])
       set({
         threads: [t],
         currentThreadId: t.id,
-        messages: [welcome],
+        messages: [],
       })
     } else {
       const next = remaining[0]
