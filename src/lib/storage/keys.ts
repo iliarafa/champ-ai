@@ -27,4 +27,6 @@ const localStorageKeyStore: KeyStore = {
 
 export const keys: KeyStore = localStorageKeyStore
 
-export const KEY_LLM = 'llm_api_key'
+export const KEY_GROK = 'grok_api_key'
+export const KEY_CLAUDE = 'claude_api_key'
+export const KEY_GEMINI = 'gemini_api_key'

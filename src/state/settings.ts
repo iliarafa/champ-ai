@@ -1,28 +1,43 @@
 import { create } from 'zustand'
-import { loadSettings, saveSettings, type Theme, type SettingsRow } from '@/lib/storage/db'
-import { keys, KEY_LLM } from '@/lib/storage/keys'
+import { loadSettings, saveSettings, type Theme, type SettingsRow, type ProviderId, SETTINGS_DEFAULTS } from '@/lib/storage/db'
+import { keys, KEY_GROK, KEY_CLAUDE, KEY_GEMINI } from '@/lib/storage/keys'
 
 export interface SettingsState {
   hydrated: boolean
-  apiKey: string
-  baseURL: string
-  model: string
+  currentProvider: ProviderId
+
+  grokApiKey: string
+  claudeApiKey: string
+  geminiApiKey: string
+
+  grokModel: string
+  claudeModel: string
+  geminiModel: string
+
   systemPrompt: string
   theme: Theme
   imageQualityPreset: 'high' | 'balanced' | 'fast'
   chatFontSize: 'sm' | 'md' | 'lg' | 'xl'
 
   hydrate: () => Promise<void>
-  setApiKey: (value: string) => Promise<void>
+  setApiKey: (provider: ProviderId, value: string) => Promise<void>
   updateConfig: (patch: Partial<Omit<SettingsRow, 'id' | 'theme'>>) => Promise<void>
   setTheme: (theme: Theme) => Promise<void>
+  setCurrentProvider: (provider: ProviderId) => Promise<void>
 }
 
 export const useSettings = create<SettingsState>((set, get) => ({
   hydrated: false,
-  apiKey: '',
-  baseURL: 'https://api.x.ai/v1',
-  model: 'grok-3-latest',
+  currentProvider: 'grok',
+
+  grokApiKey: '',
+  claudeApiKey: '',
+  geminiApiKey: '',
+
+  grokModel: SETTINGS_DEFAULTS.grokModel,
+  claudeModel: SETTINGS_DEFAULTS.claudeModel,
+  geminiModel: SETTINGS_DEFAULTS.geminiModel,
+
   systemPrompt: '',
   theme: 'system',
   imageQualityPreset: 'balanced',
@@ -30,15 +45,27 @@ export const useSettings = create<SettingsState>((set, get) => ({
 
   async hydrate() {
     if (get().hydrated) return
-    const [row, apiKey] = await Promise.all([
-      loadSettings(),
-      keys.get(KEY_LLM),
+
+    const row = await loadSettings()
+
+    const [grokKey, claudeKey, geminiKey] = await Promise.all([
+      keys.get(KEY_GROK),
+      keys.get(KEY_CLAUDE),
+      keys.get(KEY_GEMINI),
     ])
+
     set({
       hydrated: true,
-      apiKey: apiKey ?? '',
-      baseURL: row.baseURL,
-      model: row.model,
+      currentProvider: row.currentProvider,
+
+      grokApiKey: grokKey ?? '',
+      claudeApiKey: claudeKey ?? '',
+      geminiApiKey: geminiKey ?? '',
+
+      grokModel: row.grokModel,
+      claudeModel: row.claudeModel,
+      geminiModel: row.geminiModel,
+
       systemPrompt: row.systemPrompt,
       theme: row.theme,
       imageQualityPreset: row.imageQualityPreset ?? 'balanced',
@@ -46,30 +73,38 @@ export const useSettings = create<SettingsState>((set, get) => ({
     })
   },
 
-  async setApiKey(value) {
+  async setApiKey(provider, value) {
     const trimmed = value.trim()
+    const keyConstant =
+      provider === 'grok' ? KEY_GROK :
+      provider === 'claude' ? KEY_CLAUDE : KEY_GEMINI
+
     if (trimmed) {
-      await keys.set(KEY_LLM, trimmed)
+      await keys.set(keyConstant, trimmed)
     } else {
-      await keys.delete(KEY_LLM)
+      await keys.delete(keyConstant)
     }
-    set({ apiKey: trimmed })
+
+    const patch =
+      provider === 'grok' ? { grokApiKey: trimmed } :
+      provider === 'claude' ? { claudeApiKey: trimmed } :
+      { geminiApiKey: trimmed }
+
+    set(patch)
   },
 
   async updateConfig(patch) {
-    const current = {
-      baseURL: get().baseURL,
-      model: get().model,
-      systemPrompt: get().systemPrompt,
-      theme: get().theme,
-    }
-    const next = { ...current, ...patch }
-    await saveSettings(next)
-    set(next)
+    set(patch)
+    await saveSettings(patch)
   },
 
   async setTheme(theme) {
     set({ theme })
     await saveSettings({ theme })
+  },
+
+  async setCurrentProvider(provider) {
+    set({ currentProvider: provider })
+    await saveSettings({ currentProvider: provider })
   },
 }))

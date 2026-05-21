@@ -144,7 +144,9 @@ export default function App() {
   }, [messages, isStreaming])
 
   const currentThread = threads.find((t) => t.id === currentThreadId)
-  const hasKey = !!settings.apiKey
+  const hasKey = settings.currentProvider === 'grok' ? !!settings.grokApiKey :
+                 settings.currentProvider === 'claude' ? !!settings.claudeApiKey :
+                 !!settings.geminiApiKey
 
   async function handleSend() {
     const text = input.trim()
@@ -224,8 +226,12 @@ export default function App() {
               )}
             </div>
           )}
-          <div className="text-[10px] px-1.5 py-px rounded bg-muted text-muted-foreground font-mono">
-            {settings.model}
+          <div className="text-[10px] px-1.5 py-px rounded bg-muted text-muted-foreground font-mono capitalize">
+            {settings.currentProvider} • {
+              settings.currentProvider === 'grok' ? settings.grokModel :
+              settings.currentProvider === 'claude' ? settings.claudeModel :
+              settings.geminiModel
+            }
           </div>
         </div>
 

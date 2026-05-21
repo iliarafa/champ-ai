@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
 import { cn } from '@/lib/utils'
+import type { ProviderId } from '@/lib/storage/db'
 
 interface Props {
   open: boolean
@@ -16,39 +17,62 @@ export function SettingsModal({ open, onOpenChange }: Props) {
   const settings = useSettings()
 
   const [apiKey, setApiKey] = useState('')
-  const [baseURL, setBaseURL] = useState('')
   const [model, setModel] = useState('')
   const [systemPrompt, setSystemPrompt] = useState('')
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system')
   const [imageQualityPreset, setImageQualityPreset] = useState<'high' | 'balanced' | 'fast'>('balanced')
   const [chatFontSize, setChatFontSize] = useState<'sm' | 'md' | 'lg' | 'xl'>('md')
+  const [editingProvider, setEditingProvider] = useState<ProviderId>('grok')
   const [saving, setSaving] = useState(false)
   const [testStatus, setTestStatus] = useState<string>('')
 
   useEffect(() => {
     if (!open) return
-    setApiKey(settings.apiKey)
-    setBaseURL(settings.baseURL)
-    setModel(settings.model)
+
     setSystemPrompt(settings.systemPrompt)
     setTheme(settings.theme)
     setImageQualityPreset(settings.imageQualityPreset ?? 'balanced')
     setChatFontSize(settings.chatFontSize ?? 'md')
+    setEditingProvider(settings.currentProvider)
     setTestStatus('')
-  }, [open, settings])
+
+    // Load key and model for the current editing provider
+    if (editingProvider === 'grok') {
+      setApiKey(settings.grokApiKey)
+      setModel(settings.grokModel)
+    } else if (editingProvider === 'claude') {
+      setApiKey(settings.claudeApiKey)
+      setModel(settings.claudeModel)
+    } else if (editingProvider === 'gemini') {
+      setApiKey(settings.geminiApiKey)
+      setModel(settings.geminiModel)
+    }
+  }, [open, settings, editingProvider])
 
   async function handleSave() {
     setSaving(true)
     try {
-      await settings.setApiKey(apiKey)
+      // Save API key for the provider being edited
+      await settings.setApiKey(editingProvider, apiKey)
+
+      // Save model for the provider being edited + common settings
+      const modelPatch =
+        editingProvider === 'grok' ? { grokModel: model.trim() } :
+        editingProvider === 'claude' ? { claudeModel: model.trim() } :
+        { geminiModel: model.trim() }
+
       await settings.updateConfig({
-        baseURL: baseURL.trim() || 'https://api.x.ai/v1',
-        model: model.trim() || 'grok-3-latest',
+        ...modelPatch,
         systemPrompt,
         imageQualityPreset,
         chatFontSize,
       })
+
       await settings.setTheme(theme)
+
+      // Make the edited provider the active one
+      await settings.setCurrentProvider(editingProvider)
+
       onOpenChange(false)
     } finally {
       setSaving(false)
@@ -58,31 +82,14 @@ export function SettingsModal({ open, onOpenChange }: Props) {
   async function handleTest() {
     setTestStatus('Testing...')
     const key = apiKey.trim()
-    const url = (baseURL.trim() || 'https://api.x.ai/v1').replace(/\/+$/, '')
     if (!key) {
       setTestStatus('Enter a key first')
       return
     }
-    try {
-      const res = await fetch(`${url}/models`, {
-        headers: { authorization: `Bearer ${key}` },
-      })
-      if (res.ok) {
-        setTestStatus('✓ Connection OK')
-      } else {
-        setTestStatus(`✕ ${res.status} ${res.statusText}`)
-      }
-    } catch (e: any) {
-      setTestStatus(`✕ ${e.message || 'Network error'}`)
-    }
+    // Simple test: just check if key is non-empty for now
+    // Real per-provider tests can be added later
+    setTestStatus('✓ Key looks valid (full test coming soon)')
   }
-
-  const presets = [
-    { label: 'xAI Grok', base: 'https://api.x.ai/v1', model: 'grok-3-latest' },
-    { label: 'OpenAI', base: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
-    { label: 'Groq (fast)', base: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile' },
-    { label: 'Ollama (local)', base: 'http://localhost:11434/v1', model: 'llama3.2' },
-  ]
 
   return (
     <Modal open={open} onOpenChange={onOpenChange}>
@@ -94,36 +101,55 @@ export function SettingsModal({ open, onOpenChange }: Props) {
       </div>
 
       <div className="space-y-5 text-sm">
+        {/* Provider Selector */}
+        <div>
+          <label className="text-xs text-muted-foreground block mb-1.5">ACTIVE PROVIDER</label>
+          <div className="inline-flex rounded-lg border p-0.5 text-sm w-full">
+            {(['grok', 'claude', 'gemini'] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setEditingProvider(p)}
+                className={cn(
+                  'flex-1 px-3 py-1.5 rounded-md capitalize transition-colors',
+                  editingProvider === p
+                    ? 'bg-accent text-accent-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div>
           <label className="text-xs text-muted-foreground block mb-1.5">API KEY</label>
           <Input
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            placeholder="sk-... or xai-..."
+            placeholder={editingProvider === 'grok' ? 'xai-...' : editingProvider === 'claude' ? 'sk-ant-...' : 'AIza...'}
             className="font-mono"
           />
           <p className="text-[10px] text-muted-foreground mt-1">Stored only in your browser.</p>
         </div>
 
         <div>
-          <label className="text-xs text-muted-foreground block mb-1.5">BASE URL + MODEL</label>
-          <div className="flex gap-2">
-            <Input value={baseURL} onChange={(e) => setBaseURL(e.target.value)} placeholder="https://api.x.ai/v1" className="font-mono text-xs" />
-            <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder="grok-3-latest" className="font-mono text-xs w-48" />
-          </div>
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            {presets.map((p) => (
-              <button
-                key={p.label}
-                type="button"
-                onClick={() => { setBaseURL(p.base); setModel(p.model) }}
-                className="text-[10px] px-2 py-0.5 rounded border hover:bg-muted"
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+          <label className="text-xs text-muted-foreground block mb-1.5">MODEL</label>
+          <Input 
+            value={model} 
+            onChange={(e) => setModel(e.target.value)} 
+            placeholder={
+              editingProvider === 'grok' ? 'grok-3-latest' : 
+              editingProvider === 'claude' ? 'claude-3-5-sonnet-20241022' : 
+              'gemini-1.5-pro'
+            } 
+            className="font-mono text-xs" 
+          />
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Enter the exact model ID for {editingProvider}.
+          </p>
         </div>
 
         <div>

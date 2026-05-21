@@ -12,8 +12,9 @@ import {
   type MessageContentPart,
 } from '@/lib/storage/db'
 import { useSettings } from './settings'
-import { streamOpenAICompat, ProviderError } from '@/lib/providers'
+import { streamProvider, ProviderError } from '@/lib/providers'
 import { getTextFromContent } from '@/lib/utils'
+
 
 export interface ThreadsState {
   hydrated: boolean
@@ -130,8 +131,28 @@ export const useThreads = create<ThreadsState>((set, get) => ({
     if ((!trimmed && attachments.length === 0) || get().isStreaming) return
 
     const settings = useSettings.getState()
-    if (!settings.apiKey) {
-      set({ error: 'Add your API key in Settings first.' })
+    const provider = settings.currentProvider
+
+    let apiKey = ''
+    let baseURL = ''
+    let model = ''
+
+    if (provider === 'grok') {
+      apiKey = settings.grokApiKey
+      baseURL = 'https://api.x.ai/v1'
+      model = settings.grokModel
+    } else if (provider === 'claude') {
+      apiKey = settings.claudeApiKey
+      baseURL = 'https://api.anthropic.com'
+      model = settings.claudeModel
+    } else if (provider === 'gemini') {
+      apiKey = settings.geminiApiKey
+      baseURL = 'https://generativelanguage.googleapis.com'
+      model = settings.geminiModel
+    }
+
+    if (!apiKey) {
+      set({ error: `Add your ${provider} API key in Settings first.` })
       return
     }
 
@@ -194,10 +215,10 @@ export const useThreads = create<ThreadsState>((set, get) => ({
       .map((m) => ({ role: m.role, content: m.content }))
 
     try {
-      for await (const evt of streamOpenAICompat({
-        apiKey: settings.apiKey,
-        baseURL: settings.baseURL,
-        model: settings.model,
+      for await (const evt of streamProvider(provider, {
+        apiKey,
+        baseURL,
+        model,
         systemPrompt: settings.systemPrompt || undefined,
         messages: history,
         webSearchEnabled: opts.webSearch,

@@ -1,11 +1,17 @@
 import Dexie, { type EntityTable } from 'dexie'
 
 export type Theme = 'light' | 'dark' | 'system'
+export type ProviderId = 'grok' | 'claude' | 'gemini'
 
 export interface SettingsRow {
   id: 1
-  baseURL: string
-  model: string
+  currentProvider: ProviderId
+
+  // Per-provider models
+  grokModel: string
+  claudeModel: string
+  geminiModel: string
+
   systemPrompt: string
   theme: Theme
   imageQualityPreset: 'high' | 'balanced' | 'fast'
@@ -47,8 +53,12 @@ db.version(1).stores({
 
 export const SETTINGS_DEFAULTS: SettingsRow = {
   id: 1,
-  baseURL: 'https://api.x.ai/v1',
-  model: 'grok-3-latest',
+  currentProvider: 'grok',
+
+  grokModel: 'grok-3-latest',
+  claudeModel: 'claude-3-5-sonnet-20241022',
+  geminiModel: 'gemini-1.5-pro',
+
   systemPrompt: '',
   theme: 'system',
   imageQualityPreset: 'balanced',
