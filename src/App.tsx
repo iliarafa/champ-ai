@@ -421,7 +421,7 @@ export default function App() {
                 </div>
               )}
 
-              <div className="flex gap-2 items-end">
+              <div className="flex gap-2 items-stretch">
                 <textarea
                   ref={inputRef}
                   value={input}
@@ -433,11 +433,11 @@ export default function App() {
                   disabled={isStreaming || !hasKey}
                 />
 
-                <div className="flex flex-col gap-1.5">
+                {/* Horizontal tall buttons */}
+                <div className="flex gap-2 items-center self-stretch">
                   {/* Attach photos */}
                   <Button
                     variant="outline"
-                    size="icon-sm"
                     onClick={() => {
                       const input = document.createElement('input')
                       input.type = 'file'
@@ -467,30 +467,37 @@ export default function App() {
                     }}
                     disabled={isStreaming || !hasKey}
                     title="Attach photos"
+                    className="h-full px-3 rounded-2xl"
                   >
                     <Paperclip className="size-4" />
                   </Button>
 
                   <Button
                     variant={webSearch ? 'default' : 'outline'}
-                    size="icon-sm"
                     onClick={() => setWebSearch(!webSearch)}
                     disabled={isStreaming || !hasKey}
                     title="Toggle web search (Grok)"
-                    className={cn(webSearch && 'bg-purple-600 text-white hover:bg-purple-700')}
+                    className={cn(
+                      'h-full px-3 rounded-2xl',
+                      webSearch && 'bg-purple-600 text-white hover:bg-purple-700'
+                    )}
                   >
                     <Globe className="size-4" />
                   </Button>
 
                   {isStreaming ? (
-                    <Button variant="outline" size="icon-sm" onClick={cancel}>
+                    <Button 
+                      variant="outline" 
+                      onClick={cancel}
+                      className="h-full px-3 rounded-2xl"
+                    >
                       <Square className="size-4" />
                     </Button>
                   ) : (
                     <Button
-                      size="icon-sm"
                       onClick={() => void handleSend()}
                       disabled={(!input.trim() && attachments.length === 0) || !hasKey}
+                      className="h-full px-3 rounded-2xl"
                     >
                       <Send className="size-4" />
                     </Button>
