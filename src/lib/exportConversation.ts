@@ -16,14 +16,18 @@ function formatTimestamp(ts: number): string {
   return new Date(ts).toLocaleString()
 }
 
-function getTextParts(content: MessageContentPart[]): string {
+function getTextParts(content: MessageContentPart[] | string | undefined | null): string {
+  if (!content) return ''
+  if (typeof content === 'string') return content
+  if (!Array.isArray(content)) return ''
   return content
     .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
     .map((p) => p.text)
     .join('\n')
 }
 
-function getImageParts(content: MessageContentPart[]): Array<{ mediaType: string; data: string }> {
+function getImageParts(content: MessageContentPart[] | string | undefined | null): Array<{ mediaType: string; data: string }> {
+  if (!content || typeof content === 'string' || !Array.isArray(content)) return []
   return content.filter((p): p is { type: 'image'; mediaType: string; data: string } => p.type === 'image')
 }
 
