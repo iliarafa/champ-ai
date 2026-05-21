@@ -1,0 +1,21 @@
+{
+  "name": "Champ Ai",
+  "short_name": "Champ Ai",
+  "description": "One LLM. One Key. Pure Chat.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "icons": [
+    {
+      "src": "/b_icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/b_icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

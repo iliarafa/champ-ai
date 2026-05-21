@@ -2,8 +2,29 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/b_icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/b_icon.png" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#111111" />
+
+    <!-- iOS specific (Add to Home Screen) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Champ Ai" />
+
+    <!-- iOS Splash Screens (Apple Touch Startup Images) -->
+    <!-- Note: These currently point to b_icon.png as placeholder.
+         For best results, generate proper splash screens using a tool like:
+         https://www.pwabuilder.com/imageGenerator or https://realfavicongenerator.net -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="/b_icon.png">
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)" href="/b_icon.png">
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" href="/b_icon.png">
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)" href="/b_icon.png">
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)" href="/b_icon.png">
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" href="/b_icon.png">
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)" href="/b_icon.png">
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 2)" href="/b_icon.png">
     
     <!-- Primary Meta Tags -->
     <title>Champ Ai — One LLM. One Key. Pure Chat.</title>
@@ -15,14 +36,14 @@
     <meta property="og:url" content="https://champ-ai-ten.vercel.app/" />
     <meta property="og:title" content="Champ Ai — One LLM. One Key. Pure Chat." />
     <meta property="og:description" content="A minimal, private chat interface for any OpenAI-compatible LLM. Just bring your own API key." />
-    <meta property="og:image" content="https://champ-ai-ten.vercel.app/basketball.png" />
+    <meta property="og:image" content="https://champ-ai-ten.vercel.app/b_icon.png" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="https://champ-ai-ten.vercel.app/" />
     <meta property="twitter:title" content="Champ Ai — One LLM. One Key. Pure Chat." />
     <meta property="twitter:description" content="A minimal, private chat interface for any OpenAI-compatible LLM. Just bring your own API key." />
-    <meta property="twitter:image" content="https://champ-ai-ten.vercel.app/basketball.png" />
+    <meta property="twitter:image" content="https://champ-ai-ten.vercel.app/b_icon.png" />
   </head>
   <body>
     <div id="root"></div>
