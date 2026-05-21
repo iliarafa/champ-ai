@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Settings, Plus, Send, Square, Globe, Trash2, Edit2, Copy, Check, Paperclip, Download, ArrowRightLeft } from 'lucide-react'
+import { Settings, Plus, Send, Square, Globe, Trash2, Edit2, Copy, Check, Paperclip, Download, ArrowRightLeft, Radio } from 'lucide-react'
 import { useSettings } from '@/state/settings'
 import { useThreads } from '@/state/threads'
 import { Button } from '@/components/ui/button'
@@ -72,6 +72,7 @@ async function processImageForUpload(
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const [claudeFMPlaying, setClaudeFMPlaying] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState('')
   const [webSearch, setWebSearch] = useState(false)
@@ -286,6 +287,27 @@ export default function App() {
             title="Create a handoff document with full context + images for continuing in a new thread"
           >
             <ArrowRightLeft className="size-4" /> Handoff
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (claudeFMPlaying) {
+                setClaudeFMPlaying(false)
+              } else {
+                window.open('https://www.youtube.com/live/YmQ7jRgf4f0', '_blank')
+                setClaudeFMPlaying(true)
+              }
+            }}
+            title={claudeFMPlaying ? "Claude FM is playing (click to hide indicator)" : "Claude FM — Music for thinking and building"}
+          >
+            <Radio className="size-4" /> Claude FM
+            {claudeFMPlaying && (
+              <span
+                className="ml-1.5 h-2 w-2 rounded-full bg-emerald-500 animate-pulse"
+                title="Playing"
+              />
+            )}
           </Button>
           <Button variant="outline" size="icon-sm" onClick={() => setSettingsOpen(true)} aria-label="Settings">
             <Settings className="size-4" />
