@@ -312,7 +312,8 @@ function triggerDownload(filename: string, blob: Blob) {
 export function exportAsHandoff(
   thread: Thread,
   messages: Message[],
-  systemPrompt?: string
+  systemPrompt?: string,
+  notes?: string
 ) {
   const lines: string[] = []
 
@@ -353,6 +354,14 @@ export function exportAsHandoff(
     lines.push('')
   } else {
     lines.push('*(No custom system prompt was set for the original thread)*')
+    lines.push('')
+  }
+
+  // === NOTES ===
+  if (notes && notes.trim()) {
+    lines.push('## Notes')
+    lines.push('')
+    lines.push(notes.trim())
     lines.push('')
   }
 

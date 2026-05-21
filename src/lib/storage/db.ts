@@ -23,6 +23,7 @@ export interface Thread {
   title: string
   createdAt: number
   updatedAt: number
+  notes?: string
 }
 
 export type MessageRole = 'user' | 'assistant'
@@ -87,6 +88,7 @@ export async function createThread(title: string): Promise<Thread> {
     title: title || 'New chat',
     createdAt: now,
     updatedAt: now,
+    notes: '',
   }
   await db.threads.put(thread)
   return thread
@@ -94,6 +96,10 @@ export async function createThread(title: string): Promise<Thread> {
 
 export async function updateThreadTitle(id: string, title: string): Promise<void> {
   await db.threads.update(id, { title, updatedAt: Date.now() })
+}
+
+export async function updateThreadNotes(id: string, notes: string): Promise<void> {
+  await db.threads.update(id, { notes, updatedAt: Date.now() })
 }
 
 export async function touchThread(id: string): Promise<void> {

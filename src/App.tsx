@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Settings, Plus, Send, Square, Globe, Trash2, Edit2, Copy, Check, Paperclip, Download, ArrowRightLeft, Radio } from 'lucide-react'
+import { Settings, Plus, Send, Square, Globe, Trash2, Edit2, Copy, Check, Paperclip, Download, ArrowRightLeft, Radio, StickyNote } from 'lucide-react'
 import { useSettings } from '@/state/settings'
 import { useThreads } from '@/state/threads'
 import { Button } from '@/components/ui/button'
@@ -73,6 +73,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [claudeFMPlaying, setClaudeFMPlaying] = useState(false)
+  const [notepadOpen, setNotepadOpen] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState('')
   const [webSearch, setWebSearch] = useState(false)
@@ -94,6 +95,7 @@ export default function App() {
     threads,
     currentThreadId,
     messages,
+    currentNotes,
     isStreaming,
     error,
     hydrate,
@@ -105,6 +107,8 @@ export default function App() {
     editAndResend,
     deleteCurrent,
     renameCurrent,
+    setCurrentNotes,
+    saveCurrentNotes,
     clearError,
   } = useThreads()
 
@@ -147,6 +151,15 @@ export default function App() {
     const el = listRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [messages, isStreaming])
+
+  // Auto-save notes (debounced)
+  useEffect(() => {
+    if (!currentThreadId) return
+    const timeout = setTimeout(() => {
+      saveCurrentNotes()
+    }, 600)
+    return () => clearTimeout(timeout)
+  }, [currentNotes, currentThreadId, saveCurrentNotes])
 
   const currentThread = threads.find((t) => t.id === currentThreadId)
   const hasKey = settings.currentProvider === 'grok' ? !!settings.grokApiKey :
@@ -212,7 +225,7 @@ export default function App() {
       // Always load the complete latest messages from storage to guarantee the full dialogue
       const freshMessages = await loadMessages(currentThread.id)
       if (freshMessages.length === 0) return
-      exportAsHandoff(currentThread, freshMessages, settings.systemPrompt)
+      exportAsHandoff(currentThread, freshMessages, settings.systemPrompt, currentNotes)
     } catch (e) {
       console.error('Handoff failed', e)
       alert('Handoff failed. See console for details.')
@@ -658,6 +671,42 @@ export default function App() {
           </div>
         </div>
       </Modal>
+
+      {/* Floating Notepad */}
+      <div className="fixed bottom-16 left-4 z-50 flex flex-col items-start">
+        {/* Notepad Toggle Button */}
+        <button
+          onClick={() => setNotepadOpen(!notepadOpen)}
+          className="flex h-11 w-11 items-center justify-center rounded-full border bg-background shadow-md hover:bg-accent transition-all active:scale-95"
+          title="Thread Notes"
+        >
+          <StickyNote className="size-5" />
+        </button>
+
+        {/* Floating Notepad Panel */}
+        {notepadOpen && (
+          <div className="mt-2 w-80 rounded-2xl border bg-background shadow-xl">
+            <div className="flex items-center justify-between border-b px-3 py-2">
+              <div className="text-sm font-medium text-muted-foreground">Notes</div>
+              <button
+                onClick={() => {
+                  setNotepadOpen(false)
+                  saveCurrentNotes()
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                ✕
+              </button>
+            </div>
+            <textarea
+              value={currentNotes}
+              onChange={(e) => setCurrentNotes(e.target.value)}
+              placeholder="Write your notes for this thread here..."
+              className="h-64 w-full resize-none rounded-b-2xl bg-transparent p-3 text-sm outline-none font-chat"
+            />
+          </div>
+        )}
+      </div>
 
       <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>

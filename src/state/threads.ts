@@ -6,6 +6,7 @@ import {
   loadThreads,
   persistMessages,
   touchThread,
+  updateThreadNotes,
   updateThreadTitle,
   type Message,
   type Thread,
@@ -21,6 +22,7 @@ export interface ThreadsState {
   threads: Thread[]
   currentThreadId: string | null
   messages: Message[]
+  currentNotes: string
   isStreaming: boolean
   streamingMessageId: string | null
   error: string | null
@@ -40,6 +42,8 @@ export interface ThreadsState {
   editAndResend: (messageId: string, newText: string) => Promise<void>
   deleteCurrent: () => Promise<void>
   renameCurrent: (title: string) => Promise<void>
+  setCurrentNotes: (notes: string) => void
+  saveCurrentNotes: () => Promise<void>
   clearError: () => void
 }
 
@@ -59,6 +63,7 @@ export const useThreads = create<ThreadsState>((set, get) => ({
   threads: [],
   currentThreadId: null,
   messages: [],
+  currentNotes: '',
   isStreaming: false,
   streamingMessageId: null,
   error: null,
@@ -79,11 +84,15 @@ export const useThreads = create<ThreadsState>((set, get) => ({
       msgs = []
     }
 
+    const currentThread = threads.find((t) => t.id === currentId) || null
+    const notes = currentThread?.notes || ''
+
     set({
       hydrated: true,
       threads,
       currentThreadId: currentId,
       messages: msgs,
+      currentNotes: notes,
     })
   },
 
@@ -99,6 +108,7 @@ export const useThreads = create<ThreadsState>((set, get) => ({
       threads: [thread, ...get().threads.filter((t) => t.id !== thread.id)],
       currentThreadId: thread.id,
       messages: [],
+      currentNotes: '',
       error: null,
     })
   },
@@ -110,9 +120,13 @@ export const useThreads = create<ThreadsState>((set, get) => ({
       await persistMessages(currentThreadId, messages)
     }
     const msgs = await loadMessages(id)
+    const thread = get().threads.find((t) => t.id === id)
+    const notes = thread?.notes || ''
+
     set({
       currentThreadId: id,
       messages: msgs,
+      currentNotes: notes,
       error: null,
     })
   },
@@ -338,14 +352,17 @@ export const useThreads = create<ThreadsState>((set, get) => ({
         threads: [t],
         currentThreadId: t.id,
         messages: [],
+        currentNotes: '',
       })
     } else {
       const next = remaining[0]
       const msgs = await loadMessages(next.id)
+      const nextThread = remaining.find((t) => t.id === next.id)
       set({
         threads: remaining,
         currentThreadId: next.id,
         messages: msgs,
+        currentNotes: nextThread?.notes || '',
       })
     }
   },
@@ -363,5 +380,22 @@ export const useThreads = create<ThreadsState>((set, get) => ({
 
   clearError() {
     set({ error: null })
+  },
+
+  setCurrentNotes(notes: string) {
+    set({ currentNotes: notes })
+  },
+
+  async saveCurrentNotes() {
+    const { currentThreadId, currentNotes } = get()
+    if (!currentThreadId) return
+    await updateThreadNotes(currentThreadId, currentNotes)
+
+    // Update the notes in the local threads array as well
+    set({
+      threads: get().threads.map((t) =>
+        t.id === currentThreadId ? { ...t, notes: currentNotes } : t
+      ),
+    })
   },
 }))
