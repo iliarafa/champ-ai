@@ -359,8 +359,8 @@ export default function App() {
           <div ref={listRef} className="flex-1 overflow-y-auto">
             <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
               {messages.length === 0 && (
-                <div className="flex h-[55vh] items-center justify-center">
-                  <div className="text-6xl font-light tracking-[-2.5px] text-muted-foreground/20 select-none">
+                <div className="flex min-h-[420px] items-center justify-center">
+                  <div className="text-5xl md:text-6xl font-light tracking-[-2px] text-muted-foreground/40 select-none font-chat">
                     Let's Play!
                   </div>
                 </div>
