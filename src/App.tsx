@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Settings, Plus, Send, Square, Globe, Trash2, Edit2, Copy, Check, Paperclip, Download, ArrowRightLeft, Radio, StickyNote, TrendingUp } from 'lucide-react'
+import { Settings, Plus, Square, Trash2, Edit2, Copy, Check, Download, ArrowRightLeft, Radio, StickyNote, TrendingUp } from 'lucide-react'
 import { useSettings } from '@/state/settings'
 import { useThreads } from '@/state/threads'
 import { Button } from '@/components/ui/button'
@@ -538,19 +538,7 @@ export default function App() {
               )}
 
               <div className="flex gap-2 items-stretch">
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={onKeyDown}
-                  placeholder={hasKey ? 'Message your LLM… (⌘↵)' : 'Add your API key in Settings to chat'}
-                  rows={1}
-                  id="prompt-textarea"
-                  className="flex-1 min-h-[44px] max-h-40 resize-y rounded-2xl border bg-background px-4 py-3 text-[15px] focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60 font-chat"
-                  disabled={isStreaming || !hasKey}
-                />
-
-                {/* Horizontal tall buttons */}
+                {/* Left buttons */}
                 <div className="flex gap-2 items-center self-stretch">
                   {/* Attach photos */}
                   <Button
@@ -584,9 +572,13 @@ export default function App() {
                     }}
                     disabled={isStreaming || !hasKey}
                     title="Attach photos"
-                    className="h-full px-3 rounded-2xl"
+                    className="h-full px-1.5 rounded-2xl"
                   >
-                    <Paperclip className="size-4" />
+                    <img 
+                      src="/binder.png" 
+                      alt="Attach" 
+                      className="h-[22px] w-[22px]" 
+                    />
                   </Button>
 
                   <Button
@@ -595,13 +587,32 @@ export default function App() {
                     disabled={isStreaming || !hasKey}
                     title="Toggle web search (Grok)"
                     className={cn(
-                      'h-full px-3 rounded-2xl',
+                      'h-full px-1.5 rounded-2xl',
                       webSearch && 'bg-purple-600 text-white hover:bg-purple-700'
                     )}
                   >
-                    <Globe className="size-4" />
+                    <img 
+                      src="/web.png" 
+                      alt="Web Search" 
+                      className="h-7 w-7" 
+                    />
                   </Button>
+                </div>
 
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={onKeyDown}
+                  placeholder={hasKey ? 'Message your LLM… (⌘↵)' : 'Add your API key in Settings to chat'}
+                  rows={1}
+                  id="prompt-textarea"
+                  className="flex-1 min-h-[44px] max-h-40 resize-y rounded-2xl border bg-background px-4 py-3 text-[15px] focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60 font-chat"
+                  disabled={isStreaming || !hasKey}
+                />
+
+                {/* Right button(s) */}
+                <div className="flex items-center self-stretch">
                   {isStreaming ? (
                     <Button 
                       variant="outline" 
@@ -614,9 +625,13 @@ export default function App() {
                     <Button
                       onClick={() => void handleSend()}
                       disabled={(!input.trim() && attachments.length === 0) || !hasKey}
-                      className="h-full px-3 rounded-2xl"
+                      className="h-full px-1.5 rounded-2xl bg-white hover:bg-gray-100 disabled:bg-gray-200"
                     >
-                      <Send className="size-4" />
+                      <img 
+                        src="/pplane.png" 
+                        alt="Send" 
+                        className="h-7 w-7" 
+                      />
                     </Button>
                   )}
                 </div>
