@@ -2,8 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/b_icon.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/b_icon.png" />
+    <!-- Favicons - Safari is picky, so we include multiple formats -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/b_icon.png?v=3" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/b_icon.png?v=3" />
+
+    <!-- Note: For best Safari results, place a favicon.ico in /public (generated from b_icon.png) -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#111111" />
@@ -13,18 +17,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Champ Ai" />
 
-    <!-- iOS Splash Screens (Apple Touch Startup Images) -->
-    <!-- Note: These currently point to b_icon.png as placeholder.
-         For best results, generate proper splash screens using a tool like:
-         https://www.pwabuilder.com/imageGenerator or https://realfavicongenerator.net -->
-    <link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="/b_icon.png">
-    <link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)" href="/b_icon.png">
-    <link rel="apple-touch-startup-image" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" href="/b_icon.png">
-    <link rel="apple-touch-startup-image" media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)" href="/b_icon.png">
-    <link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)" href="/b_icon.png">
-    <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" href="/b_icon.png">
-    <link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)" href="/b_icon.png">
-    <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 2)" href="/b_icon.png">
+    <!-- iOS Splash Screens removed for now (placeholders were not ideal).
+         We can add proper ones later once good splash images are generated. -->
     
     <!-- Primary Meta Tags -->
     <title>Champ Ai — One LLM. One Key. Pure Chat.</title>
