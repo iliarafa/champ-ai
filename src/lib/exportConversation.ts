@@ -316,24 +316,34 @@ export function exportAsHandoff(
 ) {
   const lines: string[] = []
 
-  // Header
+  // === Calculate stats ===
+  const totalImages = messages.reduce((sum, m) => sum + getImageParts(m.content).length, 0)
+  const firstUserMessage = messages.find(m => m.role === 'user')
+  const firstUserText = firstUserMessage ? getTextParts(firstUserMessage.content).trim() : ''
+  const lastMessages = messages.slice(-3) // last 1-3 messages for "Current State"
+
+  // === HEADER ===
   lines.push('# HANDOFF — Continue this conversation')
   lines.push('')
-  lines.push('Copy everything below and paste it as the **first message** in a new chat (in this app or another LLM) to resume the conversation with full context.')
+  lines.push('**Instructions for the new model:**')
   lines.push('')
-  lines.push('> **Note:** Any images that were attached in the original thread are marked below (e.g. `[1 image attached]`). The actual image files are not embedded in this document (to keep the file reasonably sized and pasteable). You will need to re-upload the relevant images in the new thread if you want the model to see them.')
+  lines.push('You are continuing a previous conversation. Your role is the **Assistant**.')
+  lines.push('')
+  lines.push('- Carefully read the entire history below.')
+  lines.push('- Follow the original **System Prompt** if one was provided.')
+  lines.push('- Continue the conversation naturally from where it left off.')
+  lines.push('- Do not restart or summarize unless asked.')
   lines.push('')
   lines.push('---')
   lines.push('')
 
-  // Metadata
-  lines.push(`**Original Thread:** ${thread.title}`)
+  // === THREAD METADATA ===
+  lines.push(`**Thread:** ${thread.title}`)
   lines.push(`**Created:** ${new Date(thread.createdAt).toLocaleString()}`)
-  lines.push(`**Last updated:** ${new Date(thread.updatedAt).toLocaleString()}`)
-  lines.push(`**Total messages:** ${messages.length}`)
+  lines.push(`**Messages:** ${messages.length} (${totalImages} image${totalImages === 1 ? '' : 's'} attached)`)
   lines.push('')
 
-  // System prompt (very important for context)
+  // === SYSTEM PROMPT ===
   if (systemPrompt && systemPrompt.trim()) {
     lines.push('## System Prompt')
     lines.push('')
@@ -342,18 +352,34 @@ export function exportAsHandoff(
     lines.push('```')
     lines.push('')
   } else {
-    lines.push('*(No custom system prompt was used in the original thread)*')
+    lines.push('*(No custom system prompt was set for the original thread)*')
     lines.push('')
   }
 
+  // === CONVERSATION OVERVIEW ===
+  lines.push('## Conversation Overview')
+  lines.push('')
+  if (firstUserText) {
+    const preview = firstUserText.length > 180 ? firstUserText.slice(0, 177) + '...' : firstUserText
+    lines.push(`**Started with:** ${preview}`)
+  }
+  lines.push(`**Total exchanges:** ${messages.length}`)
+  if (totalImages > 0) {
+    lines.push(`**Images in this conversation:** ${totalImages} (marked in the history below — you will need to re-upload them to see them)`)
+  }
+  lines.push('')
+
+  // === FULL CONVERSATION HISTORY ===
   lines.push('## Full Conversation History')
+  lines.push('')
+  lines.push('The complete dialogue is shown below in chronological order.')
   lines.push('')
 
   for (const msg of messages) {
-    const role = msg.role === 'user' ? 'User' : 'Assistant'
+    const roleLabel = msg.role === 'user' ? '**User**' : '**Assistant**'
     const time = new Date(msg.createdAt).toLocaleString()
 
-    lines.push(`### ${role} — ${time}`)
+    lines.push(`${roleLabel} — ${time}`)
     lines.push('')
 
     const text = getTextParts(msg.content)
@@ -362,13 +388,12 @@ export function exportAsHandoff(
       lines.push('')
     }
 
-    // Note attached images without embedding huge base64 data
-    // (embedding large images was causing the document to truncate)
     const images = getImageParts(msg.content)
     if (images.length > 0) {
+      const who = msg.role === 'user' ? 'User' : 'Assistant'
       const label = images.length === 1
-        ? '[1 image attached]'
-        : `[${images.length} images attached]`
+        ? `[1 image attached by ${who}]`
+        : `[${images.length} images attached by ${who}]`
       lines.push(`*${label}*`)
       lines.push('')
     }
@@ -377,9 +402,42 @@ export function exportAsHandoff(
     lines.push('')
   }
 
-  lines.push('**End of handoff context.**')
+  // === CURRENT STATE (emphasized) ===
+  lines.push('## Current State')
   lines.push('')
-  lines.push('Now continue the conversation naturally from the last message above. Remember to re-upload any relevant images if needed.')
+  lines.push('The conversation is currently at this point. The new model should respond as the **Assistant** to the last user message.')
+  lines.push('')
+
+  for (const msg of lastMessages) {
+    const roleLabel = msg.role === 'user' ? '**User**' : '**Assistant**'
+    const time = new Date(msg.createdAt).toLocaleString()
+
+    lines.push(`${roleLabel} — ${time}`)
+
+    const text = getTextParts(msg.content)
+    if (text) {
+      lines.push(text)
+    }
+
+    const images = getImageParts(msg.content)
+    if (images.length > 0) {
+      const who = msg.role === 'user' ? 'User' : 'Assistant'
+      const label = images.length === 1
+        ? `[1 image attached by ${who}]`
+        : `[${images.length} images attached by ${who}]`
+      lines.push(`*${label}*`)
+    }
+
+    lines.push('')
+  }
+
+  // === CLOSING ===
+  lines.push('---')
+  lines.push('')
+  lines.push('**End of Handoff**')
+  lines.push('')
+  lines.push('You now have the full context. Continue the conversation as the Assistant from the last message above.')
+  lines.push('If there were images in the original thread, re-upload the relevant ones when they become important in the discussion.')
 
   const filename = `Handoff_${sanitizeFilename(thread.title)}.md`
   downloadTextFile(filename, lines.join('\n'), 'text/markdown')
