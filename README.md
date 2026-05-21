@@ -4,6 +4,8 @@
 
 A minimal, private, client-side chat interface for any OpenAI-compatible LLM (xAI/Grok, OpenAI, Groq, Ollama, etc.). No backend, no accounts, no telemetry — your key never leaves your browser.
 
+**Live Demo:** [https://champ-ai-ten.vercel.app](https://champ-ai-ten.vercel.app)
+
 ## Quick start
 
 ```bash
@@ -46,6 +48,13 @@ Built as the simplest possible "bring your own LLM" chat UI.
 ```bash
 npm run build
 ```
+
+## Deployment
+
+This project is deployed on Vercel and automatically redeploys on every push to the `main` branch.
+
+- **Live URL**: [https://champ-ai-ten.vercel.app](https://champ-ai-ten.vercel.app)
+- **GitHub**: [iliarafa/champ-ai](https://github.com/iliarafa/champ-ai)
 
 ## License
 
