@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { Settings, Plus, Send, Square, Globe, Trash2, Edit2, Copy, Check, Paperclip } from 'lucide-react'
+import { Settings, Plus, Send, Square, Globe, Trash2, Edit2, Copy, Check, Paperclip, Download } from 'lucide-react'
 import { useSettings } from '@/state/settings'
 import { useThreads } from '@/state/threads'
 import { Button } from '@/components/ui/button'
 import { SettingsModal } from '@/components/SettingsModal'
+import { Modal } from '@/components/ui/modal'
 import { Markdown } from '@/lib/markdown'
 import { cn, getTextFromContent } from '@/lib/utils'
+import { exportConversation, type ExportFormat } from '@/lib/exportConversation'
 
 /**
  * Resize + compress image before sending to LLM.
@@ -68,6 +70,7 @@ async function processImageForUpload(
 
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState('')
   const [webSearch, setWebSearch] = useState(false)
@@ -187,6 +190,17 @@ export default function App() {
     setEditingTitle(false)
   }
 
+  async function handleExport(format: ExportFormat) {
+    if (!currentThread || messages.length === 0) return
+    setExportOpen(false)
+    try {
+      await exportConversation(currentThread, messages, format)
+    } catch (e) {
+      console.error('Export failed', e)
+      alert('Export failed. See console for details.')
+    }
+  }
+
   if (!hydrated) {
     return <div className="h-screen flex items-center justify-center text-muted-foreground">Loading…</div>
   }
@@ -238,6 +252,14 @@ export default function App() {
         <div className="flex items-center gap-1.5">
           <Button variant="outline" size="sm" onClick={() => void newChat()}>
             <Plus className="size-4" /> New
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setExportOpen(true)}
+            disabled={!currentThread || messages.length === 0}
+          >
+            <Download className="size-4" /> Export
           </Button>
           <Button variant="outline" size="icon-sm" onClick={() => setSettingsOpen(true)} aria-label="Settings">
             <Settings className="size-4" />
@@ -535,6 +557,58 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* Export modal */}
+      <Modal open={exportOpen} onOpenChange={setExportOpen}>
+        <div className="space-y-4">
+          <div>
+            <div className="text-lg font-semibold">Export conversation</div>
+            <div className="text-sm text-muted-foreground mt-1">
+              {currentThread?.title} — {messages.length} messages
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <button
+              onClick={() => void handleExport('markdown')}
+              className="flex flex-col items-start rounded-xl border p-4 text-left hover:bg-accent transition"
+            >
+              <div className="font-medium">Markdown (.md)</div>
+              <div className="text-xs text-muted-foreground mt-1">Readable text + images as data URIs</div>
+            </button>
+
+            <button
+              onClick={() => void handleExport('csv')}
+              className="flex flex-col items-start rounded-xl border p-4 text-left hover:bg-accent transition"
+            >
+              <div className="font-medium">CSV (.csv)</div>
+              <div className="text-xs text-muted-foreground mt-1">Tabular: timestamp, role, text</div>
+            </button>
+
+            <button
+              onClick={() => void handleExport('pdf')}
+              className="flex flex-col items-start rounded-xl border p-4 text-left hover:bg-accent transition"
+            >
+              <div className="font-medium">PDF (.pdf)</div>
+              <div className="text-xs text-muted-foreground mt-1">Formatted document with images</div>
+            </button>
+
+            <button
+              onClick={() => void handleExport('docx')}
+              className="flex flex-col items-start rounded-xl border p-4 text-left hover:bg-accent transition"
+            >
+              <div className="font-medium">Word (.docx)</div>
+              <div className="text-xs text-muted-foreground mt-1">Real .docx file with embedded images</div>
+            </button>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button variant="outline" onClick={() => setExportOpen(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
