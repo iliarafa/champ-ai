@@ -16,7 +16,7 @@ async function processImageForUpload(
   file: File, 
   maxSize = 1280, 
   quality = 0.85
-): Promise<{ mediaType: string; data: string; preview: string }> {
+): Promise<{ mediaType: string; data: string; preview: string; originalSize: number; compressedSize: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     
@@ -49,10 +49,15 @@ async function processImageForUpload(
         return reject(new Error('Failed to process image'))
       }
 
+      // Calculate compressed size from base64
+      const compressedSize = Math.round((match[2].length * 3) / 4)
+
       resolve({
         mediaType: match[1],
         data: match[2],
         preview: dataUrl,
+        originalSize: file.size,
+        compressedSize,
       })
     }
 
@@ -67,7 +72,16 @@ export default function App() {
   const [titleInput, setTitleInput] = useState('')
   const [webSearch, setWebSearch] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [attachments, setAttachments] = useState<Array<{ id: string; mediaType: string; data: string; preview: string }>>([])
+  const [attachments, setAttachments] = useState<
+    Array<{
+      id: string
+      mediaType: string
+      data: string
+      preview: string
+      originalSize: number
+      compressedSize: number
+    }>
+  >([])
 
   const settings = useSettings()
   const {
@@ -340,28 +354,70 @@ export default function App() {
           </div>
 
           {/* Prompt Bar */}
-          <div className="border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div
+            className="border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+            onDragOver={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+            }}
+            onDrop={async (e) => {
+              e.preventDefault()
+              e.stopPropagation()
+
+              if (!hasKey || isStreaming) return
+
+              const droppedFiles = Array.from(e.dataTransfer.files).filter((f) =>
+                f.type.startsWith('image/')
+              )
+              if (droppedFiles.length === 0) return
+
+              const qualityPreset = useSettings.getState().imageQualityPreset ?? 'balanced'
+              const presets = {
+                high: { maxSize: 1920, quality: 0.92 },
+                balanced: { maxSize: 1280, quality: 0.85 },
+                fast: { maxSize: 800, quality: 0.75 },
+              } as const
+              const { maxSize, quality } = presets[qualityPreset]
+
+              const newAtts = await Promise.all(
+                droppedFiles.map((f) => processImageForUpload(f, maxSize, quality))
+              )
+              setAttachments((prev) => [
+                ...prev,
+                ...newAtts.map((a) => ({ id: crypto.randomUUID(), ...a })),
+              ])
+            }}
+          >
             <div className="max-w-3xl mx-auto">
               {/* Attachments preview */}
               {attachments.length > 0 && (
                 <div className="flex gap-2 mb-2 flex-wrap">
-                  {attachments.map((att) => (
-                    <div key={att.id} className="relative group">
-                      <img
-                        src={att.preview}
-                        alt="preview"
-                        className="h-14 w-14 object-cover rounded-lg border"
-                      />
-                      <button
-                        onClick={() =>
-                          setAttachments((prev) => prev.filter((a) => a.id !== att.id))
-                        }
-                        className="absolute -top-1 -right-1 bg-black/70 hover:bg-black text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] opacity-80 group-hover:opacity-100"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                  {attachments.map((att) => {
+                    const savings = Math.round(
+                      ((att.originalSize - att.compressedSize) / att.originalSize) * 100
+                    )
+                    return (
+                      <div key={att.id} className="relative group">
+                        <img
+                          src={att.preview}
+                          alt="preview"
+                          className="h-14 w-14 object-cover rounded-lg border"
+                        />
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-[9px] text-white px-1 rounded-b-lg text-center tabular-nums">
+                          {Math.round(att.compressedSize / 1024)}KB
+                          {savings > 0 && <span className="text-green-400"> (-{savings}%)</span>}
+                        </div>
+                        <button
+                          onClick={() =>
+                            setAttachments((prev) => prev.filter((a) => a.id !== att.id))
+                          }
+                          className="absolute -top-1 -right-1 bg-black/70 hover:bg-black text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] opacity-80 group-hover:opacity-100"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
 
@@ -389,7 +445,19 @@ export default function App() {
                       input.multiple = true
                       input.onchange = async (e) => {
                         const files = Array.from((e.target as HTMLInputElement).files || [])
-                        const newAtts = await Promise.all(files.map((f) => processImageForUpload(f)))
+                        const qualityPreset = useSettings.getState().imageQualityPreset ?? 'balanced'
+
+                        const presets = {
+                          high: { maxSize: 1920, quality: 0.92 },
+                          balanced: { maxSize: 1280, quality: 0.85 },
+                          fast: { maxSize: 800, quality: 0.75 },
+                        } as const
+
+                        const { maxSize, quality } = presets[qualityPreset]
+
+                        const newAtts = await Promise.all(
+                          files.map((f) => processImageForUpload(f, maxSize, quality))
+                        )
                         setAttachments((prev) => [
                           ...prev,
                           ...newAtts.map((a) => ({ id: crypto.randomUUID(), ...a })),

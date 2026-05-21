@@ -20,6 +20,7 @@ export function SettingsModal({ open, onOpenChange }: Props) {
   const [model, setModel] = useState('')
   const [systemPrompt, setSystemPrompt] = useState('')
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system')
+  const [imageQualityPreset, setImageQualityPreset] = useState<'high' | 'balanced' | 'fast'>('balanced')
   const [saving, setSaving] = useState(false)
   const [testStatus, setTestStatus] = useState<string>('')
 
@@ -30,6 +31,7 @@ export function SettingsModal({ open, onOpenChange }: Props) {
     setModel(settings.model)
     setSystemPrompt(settings.systemPrompt)
     setTheme(settings.theme)
+    setImageQualityPreset(settings.imageQualityPreset ?? 'balanced')
     setTestStatus('')
   }, [open, settings])
 
@@ -41,6 +43,7 @@ export function SettingsModal({ open, onOpenChange }: Props) {
         baseURL: baseURL.trim() || 'https://api.x.ai/v1',
         model: model.trim() || 'grok-3-latest',
         systemPrompt,
+        imageQualityPreset,
       })
       await settings.setTheme(theme)
       onOpenChange(false)
@@ -146,6 +149,33 @@ export function SettingsModal({ open, onOpenChange }: Props) {
               </button>
             ))}
           </div>
+        </div>
+
+        <div>
+          <label className="text-xs text-muted-foreground block mb-1.5">IMAGE QUALITY (for photos)</label>
+          <div className="inline-flex rounded-lg border p-0.5 text-sm">
+            {[
+              { value: 'high', label: 'High', desc: '1920px • 92%' },
+              { value: 'balanced', label: 'Balanced', desc: '1280px • 85%' },
+              { value: 'fast', label: 'Fast', desc: '800px • 75%' },
+            ].map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => setImageQualityPreset(p.value as any)}
+                className={cn(
+                  'px-3 py-1 rounded-md text-left',
+                  imageQualityPreset === p.value
+                    ? 'bg-accent text-accent-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <div>{p.label}</div>
+                <div className="text-[10px] opacity-70">{p.desc}</div>
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-1">Higher quality = larger files sent to the model.</p>
         </div>
       </div>
 

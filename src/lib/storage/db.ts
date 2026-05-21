@@ -8,6 +8,7 @@ export interface SettingsRow {
   model: string
   systemPrompt: string
   theme: Theme
+  imageQualityPreset: 'high' | 'balanced' | 'fast'
 }
 
 export interface Thread {
@@ -49,6 +50,7 @@ export const SETTINGS_DEFAULTS: SettingsRow = {
   model: 'grok-3-latest',
   systemPrompt: '',
   theme: 'system',
+  imageQualityPreset: 'balanced',
 }
 
 export async function loadSettings(): Promise<SettingsRow> {

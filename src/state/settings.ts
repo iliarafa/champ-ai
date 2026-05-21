@@ -9,6 +9,7 @@ export interface SettingsState {
   model: string
   systemPrompt: string
   theme: Theme
+  imageQualityPreset: 'high' | 'balanced' | 'fast'
 
   hydrate: () => Promise<void>
   setApiKey: (value: string) => Promise<void>
@@ -23,6 +24,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
   model: 'grok-3-latest',
   systemPrompt: '',
   theme: 'system',
+  imageQualityPreset: 'balanced',
 
   async hydrate() {
     if (get().hydrated) return
@@ -37,6 +39,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
       model: row.model,
       systemPrompt: row.systemPrompt,
       theme: row.theme,
+      imageQualityPreset: row.imageQualityPreset ?? 'balanced',
     })
   },
 
