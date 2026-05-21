@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
 import { cn } from '@/lib/utils'
 import type { ProviderId } from '@/lib/storage/db'
+import { SETTINGS_DEFAULTS } from '@/lib/storage/db'
 
 interface Props {
   open: boolean
@@ -26,6 +27,19 @@ export function SettingsModal({ open, onOpenChange }: Props) {
   const [saving, setSaving] = useState(false)
   const [testStatus, setTestStatus] = useState<string>('')
 
+  const loadProviderValues = (provider: ProviderId) => {
+    if (provider === 'grok') {
+      setApiKey(settings.grokApiKey)
+      setModel(settings.grokModel)
+    } else if (provider === 'claude') {
+      setApiKey(settings.claudeApiKey)
+      setModel(settings.claudeModel)
+    } else if (provider === 'gemini') {
+      setApiKey(settings.geminiApiKey)
+      setModel(settings.geminiModel)
+    }
+  }
+
   useEffect(() => {
     if (!open) return
 
@@ -33,21 +47,12 @@ export function SettingsModal({ open, onOpenChange }: Props) {
     setTheme(settings.theme)
     setImageQualityPreset(settings.imageQualityPreset ?? 'balanced')
     setChatFontSize(settings.chatFontSize ?? 'md')
-    setEditingProvider(settings.currentProvider)
     setTestStatus('')
 
-    // Load key and model for the current editing provider
-    if (editingProvider === 'grok') {
-      setApiKey(settings.grokApiKey)
-      setModel(settings.grokModel)
-    } else if (editingProvider === 'claude') {
-      setApiKey(settings.claudeApiKey)
-      setModel(settings.claudeModel)
-    } else if (editingProvider === 'gemini') {
-      setApiKey(settings.geminiApiKey)
-      setModel(settings.geminiModel)
-    }
-  }, [open, settings, editingProvider])
+    const initialProvider = settings.currentProvider
+    setEditingProvider(initialProvider)
+    loadProviderValues(initialProvider)
+  }, [open, settings])
 
   async function handleSave() {
     setSaving(true)
@@ -57,9 +62,9 @@ export function SettingsModal({ open, onOpenChange }: Props) {
 
       // Save model for the provider being edited + common settings
       const modelPatch =
-        editingProvider === 'grok' ? { grokModel: model.trim() } :
-        editingProvider === 'claude' ? { claudeModel: model.trim() } :
-        { geminiModel: model.trim() }
+        editingProvider === 'grok' ? { grokModel: model.trim() || SETTINGS_DEFAULTS.grokModel } :
+        editingProvider === 'claude' ? { claudeModel: model.trim() || SETTINGS_DEFAULTS.claudeModel } :
+        { geminiModel: model.trim() || SETTINGS_DEFAULTS.geminiModel }
 
       await settings.updateConfig({
         ...modelPatch,
@@ -109,7 +114,10 @@ export function SettingsModal({ open, onOpenChange }: Props) {
               <button
                 key={p}
                 type="button"
-                onClick={() => setEditingProvider(p)}
+                onClick={() => {
+                  setEditingProvider(p)
+                  loadProviderValues(p)
+                }}
                 className={cn(
                   'flex-1 px-3 py-1.5 rounded-md capitalize transition-colors',
                   editingProvider === p
