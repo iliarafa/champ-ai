@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Settings, Plus, Send, Square, Globe, Trash2, Edit2, Copy, Check, Paperclip, Download, ArrowRightLeft, Radio, StickyNote } from 'lucide-react'
+import { Settings, Plus, Send, Square, Globe, Trash2, Edit2, Copy, Check, Paperclip, Download, ArrowRightLeft, Radio, StickyNote, TrendingUp } from 'lucide-react'
 import { useSettings } from '@/state/settings'
 import { useThreads } from '@/state/threads'
 import { Button } from '@/components/ui/button'
@@ -322,6 +322,16 @@ export default function App() {
               />
             )}
           </Button>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            onClick={() => window.open('https://www.google.com/finance', '_blank')}
+            title="Google Finance"
+            aria-label="Google Finance"
+          >
+            <TrendingUp className="size-4 text-green-500" />
+          </Button>
+
           <Button variant="outline" size="icon-sm" onClick={() => setSettingsOpen(true)} aria-label="Settings">
             <Settings className="size-4" />
           </Button>
