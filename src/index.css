@@ -80,6 +80,7 @@ body {
   --color-ring: var(--ring);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
+  --font-chat: var(--font-chat);
   --radius-sm: calc(var(--radius) * 0.5);
   --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
@@ -89,6 +90,7 @@ body {
 .prose-chat {
   font-size: 0.9375rem;
   line-height: 1.6;
+  font-family: var(--font-chat);
 }
 .prose-chat :first-child { margin-top: 0; }
 .prose-chat :last-child { margin-bottom: 0; }
@@ -107,6 +109,12 @@ body {
   background: var(--card);
   border: 1px solid var(--border);
   padding: 0.75rem;
+}
+
+/* Ensure chat messages (user + AI) use Menlo */
+.message-text {
+  font-family: var(--font-chat);
+}
   border-radius: 0.5rem;
   overflow-x: auto;
   margin: 0.5rem 0;

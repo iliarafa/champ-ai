@@ -304,7 +304,7 @@ export default function App() {
                                 />
                               ))}
                             {/* Text */}
-                            <div className="whitespace-pre-wrap font-chat">
+                            <div className="whitespace-pre-wrap message-text">
                               {getTextFromContent(m.content)}
                             </div>
                           </div>
