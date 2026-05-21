@@ -21,6 +21,7 @@ export function SettingsModal({ open, onOpenChange }: Props) {
   const [systemPrompt, setSystemPrompt] = useState('')
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system')
   const [imageQualityPreset, setImageQualityPreset] = useState<'high' | 'balanced' | 'fast'>('balanced')
+  const [chatFontSize, setChatFontSize] = useState<'sm' | 'md' | 'lg' | 'xl'>('md')
   const [saving, setSaving] = useState(false)
   const [testStatus, setTestStatus] = useState<string>('')
 
@@ -32,6 +33,7 @@ export function SettingsModal({ open, onOpenChange }: Props) {
     setSystemPrompt(settings.systemPrompt)
     setTheme(settings.theme)
     setImageQualityPreset(settings.imageQualityPreset ?? 'balanced')
+    setChatFontSize(settings.chatFontSize ?? 'md')
     setTestStatus('')
   }, [open, settings])
 
@@ -44,6 +46,7 @@ export function SettingsModal({ open, onOpenChange }: Props) {
         model: model.trim() || 'grok-3-latest',
         systemPrompt,
         imageQualityPreset,
+        chatFontSize,
       })
       await settings.setTheme(theme)
       onOpenChange(false)
@@ -176,6 +179,32 @@ export function SettingsModal({ open, onOpenChange }: Props) {
             ))}
           </div>
           <p className="text-[10px] text-muted-foreground mt-1">Higher quality = larger files sent to the model.</p>
+        </div>
+
+        <div>
+          <label className="text-xs text-muted-foreground block mb-1.5">CHAT FONT SIZE</label>
+          <div className="inline-flex rounded-lg border p-0.5 text-sm">
+            {[
+              { value: 'sm', label: 'Small' },
+              { value: 'md', label: 'Medium' },
+              { value: 'lg', label: 'Large' },
+              { value: 'xl', label: 'XL' },
+            ].map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => setChatFontSize(p.value as any)}
+                className={cn(
+                  'px-3 py-1 rounded-md',
+                  chatFontSize === p.value
+                    ? 'bg-accent text-accent-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

@@ -10,6 +10,7 @@ export interface SettingsState {
   systemPrompt: string
   theme: Theme
   imageQualityPreset: 'high' | 'balanced' | 'fast'
+  chatFontSize: 'sm' | 'md' | 'lg' | 'xl'
 
   hydrate: () => Promise<void>
   setApiKey: (value: string) => Promise<void>
@@ -25,6 +26,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
   systemPrompt: '',
   theme: 'system',
   imageQualityPreset: 'balanced',
+  chatFontSize: 'md',
 
   async hydrate() {
     if (get().hydrated) return
@@ -40,6 +42,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
       systemPrompt: row.systemPrompt,
       theme: row.theme,
       imageQualityPreset: row.imageQualityPreset ?? 'balanced',
+      chatFontSize: row.chatFontSize ?? 'md',
     })
   },
 

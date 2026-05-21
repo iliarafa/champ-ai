@@ -121,6 +121,22 @@ export default function App() {
     root.classList.toggle('dark', isDark)
   }, [settings.theme, settings.hydrated])
 
+  // Apply chat font size
+  useEffect(() => {
+    if (!settings.hydrated) return
+    const root = document.documentElement
+
+    const sizeMap = {
+      sm: '14px',
+      md: '15px',
+      lg: '17px',
+      xl: '19px',
+    } as const
+
+    const size = sizeMap[settings.chatFontSize] || '15px'
+    root.style.setProperty('--chat-font-size', size)
+  }, [settings.chatFontSize, settings.hydrated])
+
   // Auto-scroll to bottom
   useEffect(() => {
     const el = listRef.current
@@ -429,6 +445,7 @@ export default function App() {
                   onKeyDown={onKeyDown}
                   placeholder={hasKey ? 'Message your LLM… (⌘↵)' : 'Add your API key in Settings to chat'}
                   rows={1}
+                  id="prompt-textarea"
                   className="flex-1 min-h-[44px] max-h-40 resize-y rounded-2xl border bg-background px-4 py-3 text-[15px] focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60 font-chat"
                   disabled={isStreaming || !hasKey}
                 />

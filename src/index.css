@@ -7,6 +7,7 @@
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --font-chat: Menlo, ui-monospace, SFMono-Regular, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --chat-font-size: 15px; /* default md */
 
   --background: oklch(0.99 0 0);
   --foreground: oklch(0.145 0 0);
@@ -88,7 +89,7 @@ body {
 
 /* Chat-specific prose styles for markdown */
 .prose-chat {
-  font-size: 0.9375rem;
+  font-size: var(--chat-font-size);
   line-height: 1.6;
   font-family: var(--font-chat);
 }
@@ -114,11 +115,15 @@ body {
 /* Ensure chat messages (user + AI) use Menlo */
 .message-text {
   font-family: var(--font-chat);
+  font-size: var(--chat-font-size);
 }
-  border-radius: 0.5rem;
-  overflow-x: auto;
-  margin: 0.5rem 0;
+
+/* Chat input textarea respects font size setting */
+#prompt-textarea {
+  font-size: var(--chat-font-size);
 }
+
+/* Additional prose fixes */
 .prose-chat pre code { background: transparent; padding: 0; }
 .prose-chat ul, .prose-chat ol { padding-left: 1.25rem; margin: 0.5rem 0; }
 .prose-chat li { margin: 0.125rem 0; }

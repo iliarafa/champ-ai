@@ -9,6 +9,7 @@ export interface SettingsRow {
   systemPrompt: string
   theme: Theme
   imageQualityPreset: 'high' | 'balanced' | 'fast'
+  chatFontSize: 'sm' | 'md' | 'lg' | 'xl'
 }
 
 export interface Thread {
@@ -51,6 +52,7 @@ export const SETTINGS_DEFAULTS: SettingsRow = {
   systemPrompt: '',
   theme: 'system',
   imageQualityPreset: 'balanced',
+  chatFontSize: 'md',
 }
 
 export async function loadSettings(): Promise<SettingsRow> {
