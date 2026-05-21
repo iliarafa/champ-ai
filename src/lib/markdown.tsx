@@ -58,7 +58,7 @@ function CodeBlock({ inline, className, children, ...props }: any) {
 
 export function Markdown({ text }: MarkdownProps) {
   return (
-    <div className="prose-chat max-w-none break-words">
+    <div className="prose-chat font-chat max-w-none break-words">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{

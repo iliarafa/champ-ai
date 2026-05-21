@@ -304,7 +304,7 @@ export default function App() {
                                 />
                               ))}
                             {/* Text */}
-                            <div className="whitespace-pre-wrap">
+                            <div className="whitespace-pre-wrap font-chat">
                               {getTextFromContent(m.content)}
                             </div>
                           </div>
@@ -429,7 +429,7 @@ export default function App() {
                   onKeyDown={onKeyDown}
                   placeholder={hasKey ? 'Message your LLM… (⌘↵)' : 'Add your API key in Settings to chat'}
                   rows={1}
-                  className="flex-1 min-h-[44px] max-h-40 resize-y rounded-2xl border bg-background px-4 py-3 text-[15px] focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+                  className="flex-1 min-h-[44px] max-h-40 resize-y rounded-2xl border bg-background px-4 py-3 text-[15px] focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60 font-chat"
                   disabled={isStreaming || !hasKey}
                 />
 
