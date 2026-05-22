@@ -27,6 +27,7 @@ Recommended quick models:
 - Streaming responses
 - Per-message web search toggle (works great with Grok)
 - Multiple chats with local persistence (IndexedDB)
+- **File attachments** — Drag or upload images, PDFs, CSVs, DOCX, XLSX, JSON, and TXT files. Images are resized/compressed; text is extracted from documents for best compatibility across providers.
 - Edit & resend, regenerate, copy
 - Markdown + syntax-friendly code blocks with copy buttons
 - System prompt support

@@ -18,7 +18,7 @@ Key philosophy:
 ### Core
 - Streaming responses from Grok, Claude, and Gemini
 - Per-provider API keys and model selection (saved in browser)
-- Image attachments with client-side resizing + compression (High / Balanced / Fast presets)
+- File attachments: images (with client-side resizing + compression presets), plus PDF, CSV, DOCX, XLSX, JSON, and TXT. Text is automatically extracted from Office/spreadsheet files for reliable use with all providers (Grok, Claude, Gemini).
 - Markdown rendering with custom styling (Menlo font support)
 - Thread management with persistence via Dexie
 
