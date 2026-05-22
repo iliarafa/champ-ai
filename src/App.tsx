@@ -5,6 +5,7 @@ import { useThreads } from '@/state/threads'
 import { Button } from '@/components/ui/button'
 import { SettingsModal } from '@/components/SettingsModal'
 import { ShareModal } from '@/components/ShareModal'
+import { ImportModal } from '@/components/ImportModal'
 import { Modal } from '@/components/ui/modal'
 import { Markdown } from '@/lib/markdown'
 import { cn, getTextFromContent } from '@/lib/utils'
@@ -74,6 +75,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [claudeFMPlaying, setClaudeFMPlaying] = useState(false)
   const [notepadOpen, setNotepadOpen] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
@@ -385,15 +387,24 @@ export default function App() {
           {/* Projects header */}
           <div className="flex items-center justify-between px-3 py-2 text-[10px] uppercase tracking-[1.5px] text-muted-foreground border-b">
             <span>Projects</span>
-            <button
-              onClick={async () => {
-                const name = prompt('New project name')
-                if (name?.trim()) await createProject(name.trim())
-              }}
-              className="text-[10px] font-normal hover:text-foreground px-1 -mr-1"
-            >
-              + new
-            </button>
+            <div className="flex items-center gap-1 text-[10px]">
+              <button
+                onClick={() => setImportOpen(true)}
+                className="rounded px-1.5 py-0.5 font-normal text-muted-foreground hover:bg-background hover:text-foreground transition"
+                title="Import a shared thread"
+              >
+                Import
+              </button>
+              <button
+                onClick={async () => {
+                  const name = prompt('New project name')
+                  if (name?.trim()) await createProject(name.trim())
+                }}
+                className="rounded px-1.5 py-0.5 font-normal hover:bg-background hover:text-foreground transition -mr-1"
+              >
+                + new
+              </button>
+            </div>
           </div>
 
           {/* Project list */}
@@ -766,6 +777,9 @@ export default function App() {
         systemPrompt={settings.systemPrompt}
         projectName={currentThread?.projectId ? projects.find(p => p.id === currentThread.projectId)?.name : undefined}
       />
+
+      {/* Import modal (Path 1) */}
+      <ImportModal open={importOpen} onOpenChange={setImportOpen} />
 
       {/* Export modal */}
       <Modal open={exportOpen} onOpenChange={setExportOpen}>

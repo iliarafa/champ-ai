@@ -18,6 +18,7 @@ import {
   type MessageContentPart,
   type Project,
 } from '@/lib/storage/db'
+import { unpackThread, type ChampShareV1 } from '@/lib/sharing/portable'
 import { useSettings } from './settings'
 import { streamProvider, ProviderError } from '@/lib/providers'
 import { getTextFromContent } from '@/lib/utils'
@@ -60,6 +61,7 @@ export interface ThreadsState {
   deleteProject: (id: string) => Promise<void>
   setCurrentProject: (id: string | null) => void
   moveThreadToProject: (threadId: string, projectId: string | null) => Promise<void>
+  importSharedThread: (share: ChampShareV1, password?: string, targetProjectId?: string | null) => Promise<void>
 }
 
 let abortController: AbortController | null = null
@@ -471,5 +473,51 @@ export const useThreads = create<ThreadsState>((set, get) => ({
         t.id === threadId ? { ...t, projectId } : t
       ),
     }))
+  },
+
+  async importSharedThread(share: ChampShareV1, password?: string, targetProjectId?: string | null) {
+    const { payload } = await unpackThread(share, password)
+
+    // Create thread via existing helper (handles ID + timestamps)
+    const created = await createThread(payload.thread.title || 'Imported Thread')
+
+    // Assign to target project if provided
+    if (targetProjectId) {
+      await assignThreadToProject(created.id, targetProjectId)
+      created.projectId = targetProjectId
+    }
+
+    // Update notes if present
+    if (payload.thread.notes) {
+      await updateThreadNotes(created.id, payload.thread.notes)
+      created.notes = payload.thread.notes
+    }
+
+    // Remap messages to the new thread ID
+    const newMessages: Message[] = payload.messages.map((m) => ({
+      ...m,
+      id: m.id || newId(),
+      threadId: created.id,
+    }))
+
+    if (newMessages.length > 0) {
+      await persistMessages(created.id, newMessages)
+    } else {
+      await touchThread(created.id)
+    }
+
+    // Refresh threads list and switch to the new one
+    const allThreads = await loadThreads()
+    const msgs = await loadMessages(created.id)
+
+    set({
+      threads: allThreads,
+      projects: get().projects, // keep current
+      currentThreadId: created.id,
+      currentProjectId: targetProjectId ?? null,
+      messages: msgs,
+      currentNotes: created.notes || '',
+      error: null,
+    })
   },
 }))
