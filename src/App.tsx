@@ -199,7 +199,7 @@ export default function App() {
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       void handleSend()
     }
@@ -315,9 +315,24 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-1.5">
-          <Button variant="outline" size="sm" onClick={() => void newChat()}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void newChat()}
+            title={
+              currentProjectId
+                ? "Start a new thread in this project. Use Handoff on an existing thread first if you want to carry forward context."
+                : "Start a new thread"
+            }
+          >
             <Plus className="size-4" /> New
           </Button>
+
+          {currentProjectId && (
+            <span className="hidden md:inline text-[10px] text-muted-foreground ml-1">
+              Tip: Use Handoff to continue context
+            </span>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -731,7 +746,7 @@ export default function App() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={onKeyDown}
-                  placeholder={hasKey ? 'Message your LLM… (⌘↵)' : 'Add your API key in Settings to chat'}
+                  placeholder={hasKey ? 'Message your LLM… (Shift+Enter for new line)' : 'Add your API key in Settings to chat'}
                   rows={1}
                   id="prompt-textarea"
                   className="flex-1 min-h-[44px] max-h-40 resize-y rounded-2xl border bg-background px-4 py-3 text-[15px] focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60 font-chat"
@@ -774,7 +789,6 @@ export default function App() {
         onOpenChange={setShareOpen}
         currentThread={currentThread || null}
         messages={messages}
-        systemPrompt={settings.systemPrompt}
         projectName={currentThread?.projectId ? projects.find(p => p.id === currentThread.projectId)?.name : undefined}
       />
 

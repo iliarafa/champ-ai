@@ -2,8 +2,8 @@ import { useState, useRef } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { useThreads } from '@/state/threads'
-import { isChampShare, unpackThread, type ChampShareV1 } from '@/lib/sharing/portable'
-import { Upload, FileText, Lock, AlertCircle } from 'lucide-react'
+import { parseMarkdownToThread } from '@/lib/sharing/markdownImport'
+import { Upload, FileText, AlertCircle } from 'lucide-react'
 
 interface ImportModalProps {
   open: boolean
@@ -11,63 +11,55 @@ interface ImportModalProps {
 }
 
 export function ImportModal({ open, onOpenChange }: ImportModalProps) {
-  const { projects, createProject, importSharedThread, setCurrentProject } = useThreads()
+  const { projects, createProject, importFromMarkdown, setCurrentProject } = useThreads()
 
   const [rawInput, setRawInput] = useState('')
-  const [password, setPassword] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState('')
   const [isDragging, setIsDragging] = useState(false)
-  const [parsed, setParsed] = useState<{ share: ChampShareV1; result: Awaited<ReturnType<typeof unpackThread>> } | null>(null)
+  const [parsed, setParsed] = useState<{ title: string; messageCount: number } | null>(null)
 
   const [targetProjectId, setTargetProjectId] = useState<string | null>(null)
   const [newProjectName, setNewProjectName] = useState('')
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Detect if the current payload requires a password (before full decrypt)
-  const requiresPassword = parsed?.share.encryption.method === 'aes-256-gcm-pbkdf2'
-
-  async function parsePayload(input: string) {
+  async function parseMarkdown(input: string) {
     setError('')
     setParsed(null)
 
     if (!input.trim()) {
-      setError('Please paste the share payload or select a file')
+      setError('Please paste Markdown content or select a .md file')
       return
     }
 
     setIsProcessing(true)
     try {
-      let share: ChampShareV1
-      try {
-        share = JSON.parse(input.trim())
-      } catch {
-        throw new Error('The pasted content is not valid JSON')
+      const result = parseMarkdownToThread(input)
+
+      if (result.messages.length === 0) {
+        throw new Error('Could not find any messages in this Markdown file')
       }
 
-      if (!isChampShare(share)) {
-        throw new Error('This file does not appear to be a valid Champ Ai share')
-      }
+      setParsed({
+        title: result.title,
+        messageCount: result.messages.length,
+      })
 
-      // Try to unpack (will fail cleanly if password is needed)
-      const result = await unpackThread(share, password || undefined)
-
-      setParsed({ share, result })
+      setRawInput(input)
     } catch (e: any) {
-      const msg = e.message || 'Failed to read the share file'
-      setError(msg)
+      setError(e.message || 'Failed to parse the Markdown file')
     } finally {
       setIsProcessing(false)
     }
   }
 
   async function handleParse() {
-    await parsePayload(rawInput)
+    await parseMarkdown(rawInput)
   }
 
   async function handleImport() {
-    if (!parsed) return
+    if (!parsed || !rawInput) return
 
     setIsProcessing(true)
     setError('')
@@ -80,17 +72,16 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
         finalProjectId = newProj.id
       }
 
-      await importSharedThread(parsed.share, password || undefined, finalProjectId)
+      await importFromMarkdown(rawInput, finalProjectId)
 
       if (finalProjectId) {
         setCurrentProject(finalProjectId)
       }
 
-      // Small success delay for better UX
-      await new Promise((r) => setTimeout(r, 250))
+      await new Promise((r) => setTimeout(r, 200))
       handleClose()
     } catch (e: any) {
-      setError(e.message || 'Import failed. Please check the password or file.')
+      setError(e.message || 'Import failed')
     } finally {
       setIsProcessing(false)
     }
@@ -98,7 +89,6 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
 
   function handleClose() {
     setRawInput('')
-    setPassword('')
     setParsed(null)
     setError('')
     setIsDragging(false)
@@ -119,7 +109,7 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
     reader.onload = (ev) => {
       const text = (ev.target?.result as string) || ''
       setRawInput(text)
-      parsePayload(text)
+      parseMarkdown(text)
     }
     reader.readAsText(file)
   }
@@ -145,7 +135,7 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
     reader.onload = (ev) => {
       const text = (ev.target?.result as string) || ''
       setRawInput(text)
-      parsePayload(text)
+      parseMarkdown(text)
     }
     reader.readAsText(file)
     e.target.value = '' // reset for same file
@@ -184,16 +174,16 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
                   <Upload className={`size-6 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
                 </div>
                 <div>
-                  <div className="font-medium">Drop your .champ file here</div>
+                  <div className="font-medium">Drop a .md file here</div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    or click to choose a file
+                    or click to choose a Markdown file
                   </div>
                 </div>
               </div>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".champ,.json,application/json"
+                accept=".md,.markdown,text/markdown"
                 onChange={handleFileSelect}
                 className="hidden"
               />
@@ -210,26 +200,13 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
               value={rawInput}
               onChange={(e) => setRawInput(e.target.value)}
               onBlur={() => { if (rawInput.trim() && !parsed) handleParse() }}
-              placeholder={`Paste the share payload JSON here...\n\nIt usually starts with {"v":1,"type":"thread"...`}
+              placeholder={`Paste Markdown content here...\n\nSupports files exported from Champ Ai (Export or Handoff)`}
               className="w-full h-28 border rounded-xl p-3 font-mono text-xs resize-y focus:outline-none focus:ring-1 focus:ring-ring"
             />
 
-            {/* Password field - only show after we know it's encrypted or user pastes */}
-            {(requiresPassword || rawInput.includes('aes-256')) && (
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Lock className="size-4" /> Password required
-                </div>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter the password used when sharing"
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
-                  onKeyDown={(e) => e.key === 'Enter' && handleParse()}
-                />
-              </div>
-            )}
+
+
+
 
             {error && (
               <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
@@ -258,22 +235,15 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-lg leading-tight pr-2">
-                    {parsed.result.payload.thread.title}
+                    {parsed.title}
                   </div>
-                  <div className="mt-1 text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
-                    <span>{parsed.result.meta.messageCount} messages</span>
-                    <span>•</span>
-                    <span>{parsed.result.meta.imageCount} images</span>
-                    {parsed.result.meta.hasNotes && <><span>•</span><span>has notes</span></>}
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    {parsed.messageCount} messages
                   </div>
                 </div>
               </div>
 
-              {parsed.result.originalProjectName && (
-                <div className="text-xs pl-11 text-muted-foreground">
-                  Originally from <span className="font-medium text-foreground">{parsed.result.originalProjectName}</span>
-                </div>
-              )}
+
             </div>
 
             {/* Destination */}
@@ -300,7 +270,7 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
                   type="text"
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
-                  placeholder={parsed.result.originalProjectName || 'Project name'}
+                  placeholder="Project name"
                   className="mt-2 w-full border rounded-xl px-3 py-2.5 text-sm"
                   autoFocus
                 />
@@ -315,7 +285,7 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
             )}
 
             <div className="flex gap-2 pt-2">
-              <Button variant="outline" onClick={() => { setParsed(null); setError(''); setPassword('') }} className="flex-1">
+              <Button variant="outline" onClick={() => { setParsed(null); setError('') }} className="flex-1">
                 Back
               </Button>
               <Button 

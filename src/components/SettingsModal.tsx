@@ -378,7 +378,7 @@ export function SettingsModal({ open, onOpenChange }: Props) {
                 <li><strong>Everything stays local</strong> — All conversations, images, notes, and settings are stored only on your device using IndexedDB and localStorage.</li>
                 <li><strong>Your API keys never leave your browser</strong> — They are sent <em>only</em> to the provider you choose (Grok, Claude, or Gemini) when making requests.</li>
                 <li><strong>No accounts, no backend, no telemetry</strong> — We don't know who you are, what you talk about, or which models you use.</li>
-                <li><strong>Encrypted sharing (optional)</strong> — When you share a thread, you can protect it with a password. The file is encrypted on your device before it ever leaves.</li>
+                <li><strong>Sharing</strong> — Use the Share button to generate a Markdown copy of any thread. You can copy it or download it as a <code>.md</code> file and send it to someone. They can import it using the Import button.</li>
               </ul>
             </div>
           </section>
@@ -397,7 +397,7 @@ export function SettingsModal({ open, onOpenChange }: Props) {
                 <strong>Pick a model</strong> — Select from recommended models or enter a custom one.
               </li>
               <li>
-                <strong>Start chatting</strong> — Type in the message box at the bottom and press <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-xs">⌘ + Enter</kbd> (or <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-xs">Ctrl + Enter</kbd>).
+                <strong>Start chatting</strong> — Type in the message box at the bottom and press <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-xs">Enter</kbd>. Use <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-xs">Shift + Enter</kbd> for a new line.
               </li>
             </ol>
 
@@ -437,14 +437,14 @@ export function SettingsModal({ open, onOpenChange }: Props) {
                 Click the <strong>Share</strong> button in the header. You can choose:
                 <ul className="list-disc pl-5 mt-1 space-y-1">
                   <li><strong>No encryption</strong> — Simple JSON file, anyone can open it.</li>
-                  <li><strong>Password protected</strong> — The entire conversation is encrypted on your device using AES-256.</li>
+                  <li><strong>Markdown format</strong> — Threads are shared as readable Markdown files (with images embedded as base64). Easy to open in any text editor.</li>
                 </ul>
-                You can copy the payload or download it as a <code>.champ</code> file.
+                You can copy the payload or download it as a Markdown file.
               </div>
 
               <div>
                 <strong className="text-foreground">Importing a Thread</strong><br />
-                Click <strong>Import</strong> in the Projects section of the sidebar. You can paste the payload or drop a <code>.champ</code> file. If it's password-protected, you'll be asked for the password. You can choose which project to import it into (or create a new one).
+                Click <strong>Import</strong> in the Projects section of the sidebar. You can paste Markdown content or drop a <code>.md</code> file. You can choose which project to import it into (or create a new one).
               </div>
             </div>
           </section>
@@ -488,11 +488,11 @@ export function SettingsModal({ open, onOpenChange }: Props) {
             <div className="grid grid-cols-1 gap-x-8 gap-y-1 text-sm">
               <div className="flex justify-between border-b border-border/60 py-1">
                 <span>Send message</span>
-                <span className="font-mono text-xs text-foreground">⌘ + Enter</span>
+                <span className="font-mono text-xs text-foreground">Enter</span>
               </div>
               <div className="flex justify-between border-b border-border/60 py-1">
-                <span>Send message (Windows/Linux)</span>
-                <span className="font-mono text-xs text-foreground">Ctrl + Enter</span>
+                <span>New line</span>
+                <span className="font-mono text-xs text-foreground">Shift + Enter</span>
               </div>
               <div className="flex justify-between py-1">
                 <span>Close modals</span>
