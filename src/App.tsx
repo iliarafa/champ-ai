@@ -97,6 +97,7 @@ export default function App() {
     messages,
     currentNotes,
     isStreaming,
+    streamingMessageId,
     error,
     hydrate,
     newChat,
@@ -392,11 +393,20 @@ export default function App() {
               {messages.map((m, idx) => {
                 const isUser = m.role === 'user'
                 const isLastAssistant = !isUser && idx === messages.length - 1
+                const isGenerating = streamingMessageId != null && m.id === streamingMessageId
                 return (
                   <div key={m.id} className={cn('flex gap-3', isUser && 'justify-end')}>
                     <div className={cn('max-w-[82%] group', isUser ? 'text-right' : '')}>
                       {!isUser && (
-                        <div className="text-xs text-muted-foreground mb-1 px-1">Assistant</div>
+                        <div className="text-xs text-muted-foreground mb-1 px-1 flex items-center gap-1.5">
+                          Assistant
+                          {isGenerating && (
+                            <span
+                              className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500/70 animate-pulse"
+                              aria-hidden="true"
+                            />
+                          )}
+                        </div>
                       )}
                       <div
                         className={cn(
@@ -425,7 +435,19 @@ export default function App() {
                             </div>
                           </div>
                         ) : (
-                          <Markdown text={getTextFromContent(m.content) || (isStreaming ? '▌' : '')} />
+                          isGenerating && getTextFromContent(m.content).trim() === '' ? (
+                            <div className="flex items-center gap-1.5 py-1" aria-label="Generating response">
+                              {[0, 1, 2].map((i) => (
+                                <span
+                                  key={i}
+                                  className="h-1 w-1 rounded-full bg-muted-foreground/60 animate-bounce"
+                                  style={{ animationDelay: `${i * 150}ms`, animationDuration: '1.1s' }}
+                                />
+                              ))}
+                            </div>
+                          ) : (
+                            <Markdown text={getTextFromContent(m.content) || (isGenerating ? '▌' : '')} />
+                          )
                         )}
                       </div>
 
