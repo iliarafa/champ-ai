@@ -4,6 +4,14 @@ import { ProviderError, type StreamEvent, type StreamRequest } from './types';
 export async function* streamClaude(req: StreamRequest): AsyncGenerator<StreamEvent> {
   const url = 'https://api.anthropic.com/v1/messages';
 
+  // Safeguard: Claude 4.7 is not publicly available yet.
+  // Fall back to a working model to avoid 404 errors.
+  let model = req.model;
+  if (model === 'claude-4.7') {
+    console.warn('[Champ Ai] Claude 4.7 is not available yet. Falling back to claude-3-5-sonnet-latest');
+    model = 'claude-3-5-sonnet-latest';
+  }
+
   // Convert our messages to Anthropic format
   const messages = req.messages
     .filter(m => m.role !== 'system')
@@ -33,7 +41,7 @@ export async function* streamClaude(req: StreamRequest): AsyncGenerator<StreamEv
     });
 
   const body: any = {
-    model: req.model,
+    model,
     max_tokens: 8192,
     messages,
     stream: true,

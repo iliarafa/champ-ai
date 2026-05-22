@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Settings, Plus, Square, Trash2, Edit2, Copy, Check, Download, ArrowRightLeft, Radio, StickyNote, TrendingUp } from 'lucide-react'
+import { Settings, Plus, Square, Trash2, Edit2, Copy, Check, Paperclip, Download, ArrowRightLeft, Radio, StickyNote, TrendingUp, Globe } from 'lucide-react'
 import { useSettings } from '@/state/settings'
 import { useThreads } from '@/state/threads'
 import { Button } from '@/components/ui/button'
@@ -572,13 +572,9 @@ export default function App() {
                     }}
                     disabled={isStreaming || !hasKey}
                     title="Attach photos"
-                    className="h-full px-1.5 rounded-2xl"
+                    className="h-full px-3 rounded-2xl"
                   >
-                    <img 
-                      src="/binder.png" 
-                      alt="Attach" 
-                      className="h-[22px] w-[22px]" 
-                    />
+                    <Paperclip className="size-4" />
                   </Button>
 
                   <Button
@@ -587,15 +583,11 @@ export default function App() {
                     disabled={isStreaming || !hasKey}
                     title="Toggle web search (Grok)"
                     className={cn(
-                      'h-full px-1.5 rounded-2xl',
+                      'h-full px-3 rounded-2xl',
                       webSearch && 'bg-purple-600 text-white hover:bg-purple-700'
                     )}
                   >
-                    <img 
-                      src="/web.png" 
-                      alt="Web Search" 
-                      className="h-7 w-7" 
-                    />
+                    <Globe className="size-4" />
                   </Button>
                 </div>
 
@@ -625,13 +617,9 @@ export default function App() {
                     <Button
                       onClick={() => void handleSend()}
                       disabled={(!input.trim() && attachments.length === 0) || !hasKey}
-                      className="h-full px-1.5 rounded-2xl bg-white hover:bg-gray-100 disabled:bg-gray-200"
+                      className="h-full px-4 rounded-2xl bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-300 disabled:text-gray-500"
                     >
-                      <img 
-                        src="/pplane.png" 
-                        alt="Send" 
-                        className="h-7 w-7" 
-                      />
+                      Send
                     </Button>
                   )}
                 </div>
