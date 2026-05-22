@@ -57,7 +57,7 @@ export const SETTINGS_DEFAULTS: SettingsRow = {
   currentProvider: 'grok',
 
   grokModel: 'grok-3-latest',
-  claudeModel: 'claude-4.7',
+  claudeModel: 'claude-3-5-sonnet-20241022',
   geminiModel: 'gemini-1.5-pro',
 
   systemPrompt: '',

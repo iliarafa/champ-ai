@@ -62,9 +62,9 @@ export function SettingsModal({ open, onOpenChange }: Props) {
 
     if (provider === 'claude') {
       return [
-        { id: 'claude-4.7', label: 'Claude 4.7 Opus' },
         { id: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet (New)' },
         { id: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku' },
+        { id: 'claude-4.7', label: 'Claude 4.7 Opus' },
       ]
     }
 
