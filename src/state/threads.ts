@@ -1,16 +1,22 @@
 import { create } from 'zustand'
 import {
+  assignThreadToProject,
+  createProject,
   createThread,
+  deleteProject as deleteProjectFromDb,
   deleteThread,
   loadMessages,
+  loadProjects,
   loadThreads,
   persistMessages,
   touchThread,
+  updateProject,
   updateThreadNotes,
   updateThreadTitle,
   type Message,
   type Thread,
   type MessageContentPart,
+  type Project,
 } from '@/lib/storage/db'
 import { useSettings } from './settings'
 import { streamProvider, ProviderError } from '@/lib/providers'
@@ -20,7 +26,9 @@ import { getTextFromContent } from '@/lib/utils'
 export interface ThreadsState {
   hydrated: boolean
   threads: Thread[]
+  projects: Project[]
   currentThreadId: string | null
+  currentProjectId: string | null // null = "All Chats" / uncategorized
   messages: Message[]
   currentNotes: string
   isStreaming: boolean
@@ -45,6 +53,13 @@ export interface ThreadsState {
   setCurrentNotes: (notes: string) => void
   saveCurrentNotes: () => Promise<void>
   clearError: () => void
+
+  // Project actions (Path 1)
+  createProject: (name: string, color?: string) => Promise<Project>
+  renameProject: (id: string, name: string) => Promise<void>
+  deleteProject: (id: string) => Promise<void>
+  setCurrentProject: (id: string | null) => void
+  moveThreadToProject: (threadId: string, projectId: string | null) => Promise<void>
 }
 
 let abortController: AbortController | null = null
@@ -61,7 +76,9 @@ function deriveTitle(text: string): string {
 export const useThreads = create<ThreadsState>((set, get) => ({
   hydrated: false,
   threads: [],
+  projects: [],
   currentThreadId: null,
+  currentProjectId: null,
   messages: [],
   currentNotes: '',
   isStreaming: false,
@@ -70,7 +87,11 @@ export const useThreads = create<ThreadsState>((set, get) => ({
 
   async hydrate() {
     if (get().hydrated) return
-    const threads = await loadThreads()
+    const [threads, projects] = await Promise.all([
+      loadThreads(),
+      loadProjects(),
+    ])
+
     let currentId: string | null = null
     let msgs: Message[] = []
 
@@ -90,20 +111,28 @@ export const useThreads = create<ThreadsState>((set, get) => ({
     set({
       hydrated: true,
       threads,
+      projects,
       currentThreadId: currentId,
+      currentProjectId: null, // start with "All Chats"
       messages: msgs,
       currentNotes: notes,
     })
   },
 
   async newChat() {
-    const { currentThreadId, messages } = get()
+    const { currentThreadId, messages, currentProjectId } = get()
     if (currentThreadId) {
-      // ensure latest messages are saved (no-op if already persisted during streaming)
       await persistMessages(currentThreadId, messages)
     }
 
     const thread = await createThread('New chat')
+
+    // Path 1: If a project is selected, put the new chat inside it
+    if (currentProjectId) {
+      await assignThreadToProject(thread.id, currentProjectId)
+      thread.projectId = currentProjectId
+    }
+
     set({
       threads: [thread, ...get().threads.filter((t) => t.id !== thread.id)],
       currentThreadId: thread.id,
@@ -397,5 +426,50 @@ export const useThreads = create<ThreadsState>((set, get) => ({
         t.id === currentThreadId ? { ...t, notes: currentNotes } : t
       ),
     })
+  },
+
+  // ==================== PROJECT ACTIONS (Path 1) ====================
+
+  async createProject(name: string, color?: string) {
+    const project = await createProject(name, color)
+    set((state) => ({ projects: [...state.projects, project] }))
+    return project
+  },
+
+  async renameProject(id: string, name: string) {
+    await updateProject(id, { name })
+    set((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === id ? { ...p, name: name.trim() || 'Untitled Project' } : p
+      ),
+    }))
+  },
+
+  async deleteProject(id: string) {
+    await deleteProjectFromDb(id)
+    const { currentProjectId, threads } = get()
+    const newThreads = threads.map((t) =>
+      t.projectId === id ? { ...t, projectId: null } : t
+    )
+
+    set((state) => ({
+      projects: state.projects.filter((p) => p.id !== id),
+      threads: newThreads,
+      currentProjectId: currentProjectId === id ? null : currentProjectId,
+    }))
+  },
+
+  setCurrentProject(id: string | null) {
+    set({ currentProjectId: id })
+  },
+
+  async moveThreadToProject(threadId: string, projectId: string | null) {
+    await assignThreadToProject(threadId, projectId)
+
+    set((state) => ({
+      threads: state.threads.map((t) =>
+        t.id === threadId ? { ...t, projectId } : t
+      ),
+    }))
   },
 }))

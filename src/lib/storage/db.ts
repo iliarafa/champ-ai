@@ -24,6 +24,16 @@ export interface Thread {
   createdAt: number
   updatedAt: number
   notes?: string
+  projectId?: string | null   // null or undefined = uncategorized
+}
+
+export interface Project {
+  id: string
+  name: string
+  color?: string
+  createdAt: number
+  updatedAt: number
+  sortOrder?: number
 }
 
 export type MessageRole = 'user' | 'assistant'
@@ -44,12 +54,21 @@ export const db = new Dexie('champ-ai') as Dexie & {
   settings: EntityTable<SettingsRow, 'id'>
   threads: EntityTable<Thread, 'id'>
   messages: EntityTable<Message, 'id'>
+  projects: EntityTable<Project, 'id'>
 }
 
 db.version(1).stores({
   settings: 'id',
   threads: 'id, updatedAt',
   messages: 'id, threadId, createdAt',
+})
+
+// Version 2: Add Projects + projectId on threads (local-first cowork foundation)
+db.version(2).stores({
+  settings: 'id',
+  threads: 'id, updatedAt, projectId',
+  messages: 'id, threadId, createdAt',
+  projects: 'id, updatedAt, sortOrder',
 })
 
 export const SETTINGS_DEFAULTS: SettingsRow = {
@@ -123,4 +142,50 @@ export async function persistMessages(threadId: string, messages: Message[]): Pr
     if (messages.length) await db.messages.bulkPut(messages)
   })
   await touchThread(threadId)
+}
+
+/* ========================= PROJECTS (Path 1 - Local-first cowork) ========================= */
+
+export async function loadProjects(): Promise<Project[]> {
+  return db.projects.orderBy('sortOrder').toArray()
+}
+
+export async function createProject(name: string, color?: string): Promise<Project> {
+  const now = Date.now()
+  const project: Project = {
+    id: crypto.randomUUID ? crypto.randomUUID() : 'p_' + Math.random().toString(36).slice(2),
+    name: name.trim() || 'New Project',
+    color,
+    createdAt: now,
+    updatedAt: now,
+    sortOrder: Date.now(), // simple initial ordering
+  }
+  await db.projects.put(project)
+  return project
+}
+
+export async function updateProject(id: string, patch: Partial<Pick<Project, 'name' | 'color' | 'sortOrder'>>): Promise<void> {
+  await db.projects.update(id, { ...patch, updatedAt: Date.now() })
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  // Move any threads in this project back to uncategorized (null)
+  await db.transaction('rw', db.projects, db.threads, async () => {
+    await db.threads.where('projectId').equals(id).modify({ projectId: null, updatedAt: Date.now() })
+    await db.projects.delete(id)
+  })
+}
+
+export async function assignThreadToProject(threadId: string, projectId: string | null): Promise<void> {
+  await db.threads.update(threadId, { projectId, updatedAt: Date.now() })
+}
+
+export async function loadThreadsByProject(projectId: string | null): Promise<Thread[]> {
+  if (projectId === null) {
+    // Uncategorized: projectId is null or missing
+    return db.threads
+      .filter((t) => t.projectId == null)
+      .toArray()
+  }
+  return db.threads.where('projectId').equals(projectId).toArray()
 }

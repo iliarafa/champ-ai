@@ -4,6 +4,7 @@ import { useSettings } from '@/state/settings'
 import { useThreads } from '@/state/threads'
 import { Button } from '@/components/ui/button'
 import { SettingsModal } from '@/components/SettingsModal'
+import { ShareModal } from '@/components/ShareModal'
 import { Modal } from '@/components/ui/modal'
 import { Markdown } from '@/lib/markdown'
 import { cn, getTextFromContent } from '@/lib/utils'
@@ -72,6 +73,7 @@ async function processImageForUpload(
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   const [claudeFMPlaying, setClaudeFMPlaying] = useState(false)
   const [notepadOpen, setNotepadOpen] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
@@ -111,11 +113,24 @@ export default function App() {
     setCurrentNotes,
     saveCurrentNotes,
     clearError,
+    // Path 1 - Projects
+    projects,
+    currentProjectId,
+    createProject,
+    renameProject: _renameProject,
+    deleteProject,
+    setCurrentProject,
+    moveThreadToProject,
   } = useThreads()
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
+
+  // Path 1 - Visible threads based on selected project
+  const visibleThreads = currentProjectId === null
+    ? threads.filter(t => !t.projectId)
+    : threads.filter(t => t.projectId === currentProjectId)
 
   // Hydrate on mount
   useEffect(() => {
@@ -268,6 +283,22 @@ export default function App() {
                   <button onClick={startRename} className="p-1 hover:text-foreground" aria-label="Rename chat">
                     <Edit2 className="size-3" />
                   </button>
+
+                  {/* Path 1: Quick project assignment for current thread */}
+                  <select
+                    value={currentThread.projectId || ''}
+                    onChange={async (e) => {
+                      const newProjectId = e.target.value || null
+                      await moveThreadToProject(currentThread.id, newProjectId)
+                    }}
+                    className="ml-2 text-[11px] bg-muted border rounded px-1.5 py-0.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                    title="Move this thread to a project"
+                  >
+                    <option value="">Uncategorized</option>
+                    {projects.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
                 </>
               )}
             </div>
@@ -301,6 +332,15 @@ export default function App() {
             title="Create a handoff document with full context + images for continuing in a new thread"
           >
             <ArrowRightLeft className="size-4" /> Handoff
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShareOpen(true)}
+            disabled={!currentThread || messages.length === 0}
+            title="Share this thread with someone (with optional encryption)"
+          >
+            Share
           </Button>
           <Button
             variant="outline"
@@ -340,31 +380,92 @@ export default function App() {
       </header>
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-60 border-r flex flex-col bg-muted/20">
-          <div className="p-3 text-xs uppercase tracking-[1px] text-muted-foreground flex items-center justify-between">
-            <span>Chats</span>
-            <button onClick={() => void newChat()} className="text-[10px] hover:text-foreground">+ new</button>
+        {/* Sidebar - Path 1: Projects + filtered threads */}
+        <div className="w-60 border-r flex flex-col bg-muted/20 text-sm">
+          {/* Projects header */}
+          <div className="flex items-center justify-between px-3 py-2 text-[10px] uppercase tracking-[1.5px] text-muted-foreground border-b">
+            <span>Projects</span>
+            <button
+              onClick={async () => {
+                const name = prompt('New project name')
+                if (name?.trim()) await createProject(name.trim())
+              }}
+              className="text-[10px] font-normal hover:text-foreground px-1 -mr-1"
+            >
+              + new
+            </button>
           </div>
-          <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-0.5 text-sm">
-            {threads.length === 0 && (
-              <div className="px-3 py-2 text-muted-foreground text-xs">No chats yet</div>
+
+          {/* Project list */}
+          <div className="px-2 py-1 space-y-px">
+            {/* All Chats */}
+            <div
+              onClick={() => setCurrentProject(null)}
+              className={cn(
+                'px-3 py-1.5 rounded-md cursor-pointer hover:bg-background/60 flex items-center',
+                currentProjectId === null && 'bg-background font-medium'
+              )}
+            >
+              All Chats
+            </div>
+
+            {projects.map((p) => (
+              <div
+                key={p.id}
+                onClick={() => setCurrentProject(p.id)}
+                className={cn(
+                  'group px-3 py-1.5 rounded-md cursor-pointer hover:bg-background/60 flex items-center justify-between',
+                  currentProjectId === p.id && 'bg-background font-medium'
+                )}
+              >
+                <div className="truncate flex items-center gap-2">
+                  {p.color && (
+                    <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: p.color }} />
+                  )}
+                  {p.name}
+                </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (confirm(`Delete project “${p.name}”? Threads will move to All Chats.`)) {
+                      void deleteProject(p.id)
+                    }
+                  }}
+                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive px-1 -mr-1"
+                  title="Delete project"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Divider + current section label */}
+          <div className="px-3 pt-2 pb-1 text-[10px] text-muted-foreground border-t mt-1">
+            {currentProjectId === null ? 'Uncategorized' : projects.find(p => p.id === currentProjectId)?.name}
+          </div>
+
+          {/* Thread list */}
+          <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-px">
+            {visibleThreads.length === 0 && (
+              <div className="px-3 py-3 text-muted-foreground text-xs">No threads here yet</div>
             )}
-            {threads.map((t) => (
+            {visibleThreads.map((t) => (
               <div
                 key={t.id}
                 onClick={() => void switchThread(t.id)}
                 className={cn(
-                  'group flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg cursor-pointer hover:bg-background/70',
-                  t.id === currentThreadId && 'bg-background border'
+                  'group flex items-center justify-between gap-2 px-3 py-1.5 rounded-md cursor-pointer hover:bg-background/60',
+                  t.id === currentThreadId && 'bg-background font-medium'
                 )}
               >
                 <div className="truncate pr-2">{t.title}</div>
                 {t.id === currentThreadId && (
                   <button
                     onClick={(e) => { e.stopPropagation(); void deleteCurrent() }}
-                    className="opacity-40 hover:opacity-100 p-1"
-                    aria-label="Delete chat"
+                    className="opacity-40 hover:opacity-100 p-0.5"
+                    aria-label="Delete thread"
                   >
                     <Trash2 className="size-3" />
                   </button>
@@ -372,6 +473,7 @@ export default function App() {
               </div>
             ))}
           </div>
+
           <div className="p-3 text-[10px] text-muted-foreground border-t">
             Everything stays in your browser
           </div>
@@ -654,6 +756,16 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* Share modal (Path 1) */}
+      <ShareModal
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        currentThread={currentThread || null}
+        messages={messages}
+        systemPrompt={settings.systemPrompt}
+        projectName={currentThread?.projectId ? projects.find(p => p.id === currentThread.projectId)?.name : undefined}
+      />
 
       {/* Export modal */}
       <Modal open={exportOpen} onOpenChange={setExportOpen}>
