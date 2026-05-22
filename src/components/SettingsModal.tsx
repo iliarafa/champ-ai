@@ -17,6 +17,8 @@ interface Props {
 export function SettingsModal({ open, onOpenChange }: Props) {
   const settings = useSettings()
 
+  const [activeTab, setActiveTab] = useState<'settings' | 'docs'>('settings')
+
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState('')
   const [systemPrompt, setSystemPrompt] = useState('')
@@ -153,7 +155,35 @@ export function SettingsModal({ open, onOpenChange }: Props) {
         </button>
       </div>
 
-      <div className="space-y-6 text-sm">
+      {/* Tabs */}
+      <div className="flex border-b mb-6">
+        <button
+          onClick={() => setActiveTab('settings')}
+          className={cn(
+            'px-4 py-2 text-sm font-medium border-b-2 transition',
+            activeTab === 'settings'
+              ? 'border-foreground text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          )}
+        >
+          Settings
+        </button>
+        <button
+          onClick={() => setActiveTab('docs')}
+          className={cn(
+            'px-4 py-2 text-sm font-medium border-b-2 transition',
+            activeTab === 'docs'
+              ? 'border-foreground text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          )}
+        >
+          Documentation
+        </button>
+      </div>
+
+      {activeTab === 'settings' ? (
+        <>
+          <div className="space-y-6 text-sm">
         {/* Provider Selector */}
         <div>
           <label className="text-xs text-muted-foreground block mb-1.5">ACTIVE PROVIDER</label>
@@ -332,6 +362,152 @@ export function SettingsModal({ open, onOpenChange }: Props) {
         <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
         <Button onClick={handleSave} disabled={saving}>Save</Button>
       </div>
+        </>
+      ) : (
+        /* ===================== DOCUMENTATION TAB ===================== */
+        <div className="space-y-8 text-sm max-h-[460px] overflow-y-auto pr-3 -mr-1 text-muted-foreground leading-relaxed">
+          
+          {/* PRIVACY & SECURITY */}
+          <section>
+            <h3 className="font-semibold text-foreground mb-3 text-base">Privacy &amp; Security</h3>
+            <div className="space-y-3">
+              <p>
+                Champ Ai is built from the ground up with privacy as the #1 priority.
+              </p>
+              <ul className="list-disc pl-5 space-y-1.5">
+                <li><strong>Everything stays local</strong> — All conversations, images, notes, and settings are stored only on your device using IndexedDB and localStorage.</li>
+                <li><strong>Your API keys never leave your browser</strong> — They are sent <em>only</em> to the provider you choose (Grok, Claude, or Gemini) when making requests.</li>
+                <li><strong>No accounts, no backend, no telemetry</strong> — We don't know who you are, what you talk about, or which models you use.</li>
+                <li><strong>Encrypted sharing (optional)</strong> — When you share a thread, you can protect it with a password. The file is encrypted on your device before it ever leaves.</li>
+              </ul>
+            </div>
+          </section>
+
+          {/* GETTING STARTED */}
+          <section>
+            <h3 className="font-semibold text-foreground mb-3 text-base">Getting Started</h3>
+            <ol className="list-decimal pl-5 space-y-2">
+              <li>
+                <strong>Open Settings</strong> — Click the gear icon in the top right.
+              </li>
+              <li>
+                <strong>Add an API key</strong> — Choose your provider (Grok, Claude, or Gemini) and paste your key. You can use multiple providers.
+              </li>
+              <li>
+                <strong>Pick a model</strong> — Select from recommended models or enter a custom one.
+              </li>
+              <li>
+                <strong>Start chatting</strong> — Type in the message box at the bottom and press <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-xs">⌘ + Enter</kbd> (or <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-xs">Ctrl + Enter</kbd>).
+              </li>
+            </ol>
+
+            <div className="mt-4 text-xs bg-muted/50 p-3 rounded-lg">
+              <strong>Recommended quick setup:</strong><br />
+              Grok → <code className="text-xs">https://api.x.ai/v1</code> + <code>grok-3-latest</code><br />
+              Claude → Use Anthropic key + <code>claude-3-5-sonnet-latest</code>
+            </div>
+          </section>
+
+          {/* INTERFACE & CHATTING */}
+          <section>
+            <h3 className="font-semibold text-foreground mb-3 text-base">Interface &amp; Chatting</h3>
+            <ul className="list-disc pl-5 space-y-2">
+              <li><strong>Projects sidebar</strong> — Organize your conversations into folders. Click a project to filter the chat list.</li>
+              <li><strong>Image attachments</strong> — Click the paperclip or drag images into the chat. Use the Image Quality setting in Settings to control size vs quality.</li>
+              <li><strong>Web Search</strong> — Toggle the globe icon for real-time web search (currently works best with Grok).</li>
+              <li><strong>Edit &amp; Resend</strong> — Hover over your messages to edit previous prompts.</li>
+              <li><strong>Regenerate</strong> — After an assistant response, hover to reveal the Regenerate button.</li>
+              <li><strong>Notepad</strong> — Every thread has its own private notepad (bottom left) that is saved automatically and included in shares.</li>
+            </ul>
+          </section>
+
+          {/* PROJECTS & SHARING */}
+          <section>
+            <h3 className="font-semibold text-foreground mb-3 text-base">Projects &amp; Secure Sharing</h3>
+            <p className="mb-2">This is the main way to collaborate with others while staying private.</p>
+            
+            <div className="space-y-3">
+              <div>
+                <strong className="text-foreground">Projects</strong><br />
+                Use the sidebar to create, rename, and switch between Projects. Threads can be moved between projects using the dropdown next to the thread title.
+              </div>
+
+              <div>
+                <strong className="text-foreground">Sharing a Thread</strong><br />
+                Click the <strong>Share</strong> button in the header. You can choose:
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li><strong>No encryption</strong> — Simple JSON file, anyone can open it.</li>
+                  <li><strong>Password protected</strong> — The entire conversation is encrypted on your device using AES-256.</li>
+                </ul>
+                You can copy the payload or download it as a <code>.champ</code> file.
+              </div>
+
+              <div>
+                <strong className="text-foreground">Importing a Thread</strong><br />
+                Click <strong>Import</strong> in the Projects section of the sidebar. You can paste the payload or drop a <code>.champ</code> file. If it's password-protected, you'll be asked for the password. You can choose which project to import it into (or create a new one).
+              </div>
+            </div>
+          </section>
+
+          {/* EXPORT & HANDOFF */}
+          <section>
+            <h3 className="font-semibold text-foreground mb-3 text-base">Export &amp; Handoff</h3>
+            <p className="mb-2">Different export options serve different purposes:</p>
+            <ul className="list-disc pl-5 space-y-1.5">
+              <li><strong>Export</strong> — Standard formats (Markdown, PDF, DOCX, CSV) for archiving or sharing with humans.</li>
+              <li><strong>Handoff</strong> — Specially formatted document designed to be pasted into another LLM so it can continue the exact same conversation with full context (including images and your notes).</li>
+            </ul>
+          </section>
+
+          {/* SETTINGS EXPLAINED */}
+          <section>
+            <h3 className="font-semibold text-foreground mb-3 text-base">Settings Explained</h3>
+            <ul className="space-y-3">
+              <li><strong>Image Quality</strong> — Controls how much photos are compressed before being sent. "Fast" = smaller files, faster responses. "High" = maximum detail.</li>
+              <li><strong>Chat Font Size</strong> — Changes the font size of messages and the input box.</li>
+              <li><strong>System Prompt</strong> — A global instruction sent with every conversation (you can override per-thread via the notepad if needed).</li>
+              <li><strong>Custom Models</strong> — You can enter any model ID supported by your provider.</li>
+            </ul>
+          </section>
+
+          {/* TIPS */}
+          <section>
+            <h3 className="font-semibold text-foreground mb-3 text-base">Tips for Best Results</h3>
+            <ul className="list-disc pl-5 space-y-1.5">
+              <li>Write a strong system prompt — it dramatically improves response quality.</li>
+              <li>Use Projects to keep long-running research or client work organized.</li>
+              <li>When sharing with others, password-protect important threads.</li>
+              <li>The Handoff format is excellent when you want to switch models mid-conversation.</li>
+              <li>Keep your API keys secure — treat them like passwords.</li>
+            </ul>
+          </section>
+
+          {/* KEYBOARD SHORTCUTS */}
+          <section>
+            <h3 className="font-semibold text-foreground mb-3 text-base">Keyboard Shortcuts</h3>
+            <div className="grid grid-cols-1 gap-x-8 gap-y-1 text-sm">
+              <div className="flex justify-between border-b border-border/60 py-1">
+                <span>Send message</span>
+                <span className="font-mono text-xs text-foreground">⌘ + Enter</span>
+              </div>
+              <div className="flex justify-between border-b border-border/60 py-1">
+                <span>Send message (Windows/Linux)</span>
+                <span className="font-mono text-xs text-foreground">Ctrl + Enter</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span>Close modals</span>
+                <span className="font-mono text-xs text-foreground">Esc</span>
+              </div>
+            </div>
+          </section>
+
+          <div className="pt-4 border-t text-xs text-muted-foreground/80">
+            Champ Ai is designed to be the simplest possible private interface for any OpenAI-compatible LLM. 
+            Everything you see here is intentional — no accounts, no tracking, just you and your models.
+          </div>
+        </div>
+      )}
+
     </Modal>
   )
 }
