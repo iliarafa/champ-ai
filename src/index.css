@@ -27,6 +27,7 @@
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
+  --chat-input: oklch(0.96 0 0);
   --ring: oklch(0.708 0 0);
   --radius: 0.625rem;
 }
@@ -50,6 +51,7 @@
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
+  --chat-input: oklch(0.11 0 0);
   --ring: oklch(0.556 0 0);
 }
 
@@ -78,6 +80,7 @@ body {
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-chat-input: var(--chat-input);
   --color-ring: var(--ring);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);

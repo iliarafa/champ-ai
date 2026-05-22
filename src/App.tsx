@@ -541,7 +541,7 @@ export default function App() {
                           'rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed',
                           isUser
                             ? 'bg-primary text-primary-foreground inline-block'
-                            : 'bg-muted border'
+                            : 'bg-muted'
                         )}
                       >
                         {isUser ? (
@@ -621,7 +621,7 @@ export default function App() {
 
           {/* Prompt Bar */}
           <div
-            className="border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+            className="bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
             onDragOver={(e) => {
               e.preventDefault()
               e.stopPropagation()
@@ -749,11 +749,11 @@ export default function App() {
                   placeholder={hasKey ? 'Message your LLM… (Shift+Enter for new line)' : 'Add your API key in Settings to chat'}
                   rows={1}
                   id="prompt-textarea"
-                  className="flex-1 min-h-[44px] max-h-40 resize-y rounded-2xl border bg-background px-4 py-3 text-[15px] focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60 font-chat"
+                  className="flex-1 min-h-[44px] max-h-40 resize-y rounded-2xl bg-[color:var(--chat-input)] px-4 py-3 text-[15px] focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60 font-chat"
                   disabled={isStreaming || !hasKey}
                 />
 
-                {/* Right button(s) */}
+                {/* Right button(s) - on normal background */}
                 <div className="flex items-center self-stretch">
                   {isStreaming ? (
                     <Button 
