@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Settings, Plus, Square, Trash2, Edit2, Copy, Check, Paperclip, Download, ArrowRightLeft, Radio, StickyNote, TrendingUp, Globe } from 'lucide-react'
+import { Settings, Plus, Square, Trash2, Edit2, Copy, Check, Paperclip, Download, ArrowRightLeft, Radio, StickyNote, TrendingUp, Globe, FileText } from 'lucide-react'
 import { useSettings } from '@/state/settings'
 import { useThreads } from '@/state/threads'
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,7 @@ async function processImageForUpload(
   file: File, 
   maxSize = 1280, 
   quality = 0.85
-): Promise<{ mediaType: string; data: string; preview: string; originalSize: number; compressedSize: number }> {
+): Promise<{ kind: 'image'; mediaType: string; data: string; preview: string; originalSize: number; compressedSize: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     
@@ -58,6 +58,7 @@ async function processImageForUpload(
       const compressedSize = Math.round((match[2].length * 3) / 4)
 
       resolve({
+        kind: 'image',
         mediaType: match[1],
         data: match[2],
         preview: dataUrl,
@@ -69,6 +70,161 @@ async function processImageForUpload(
     img.onerror = () => reject(new Error('Failed to load image'))
     img.src = URL.createObjectURL(file)
   })
+}
+
+/**
+ * Read any non-image file (PDF, CSV, DOCX, XLSX, JSON, TXT, etc.) as base64.
+ * For text-based and office formats we also extract readable text so Grok/Claude
+ * get clean content instead of binary garbage.
+ */
+async function processFileForUpload(file: File): Promise<{
+  kind: 'file'
+  mediaType: string
+  data: string
+  name: string
+  originalSize: number
+  extractedText?: string
+}> {
+  const base64 = await readFileAsBase64(file)
+  const mediaType = file.type || getMimeFromName(file.name)
+  let extractedText: string | undefined
+
+  const lowerName = file.name.toLowerCase()
+
+  try {
+    if (lowerName.endsWith('.txt') || mediaType.startsWith('text/')) {
+      extractedText = decodeBase64ToText(base64)
+    } else if (lowerName.endsWith('.json') || mediaType === 'application/json') {
+      const raw = decodeBase64ToText(base64)
+      try {
+        // Pretty-print JSON for better readability
+        extractedText = JSON.stringify(JSON.parse(raw), null, 2)
+      } catch {
+        extractedText = raw
+      }
+    } else if (lowerName.endsWith('.csv')) {
+      extractedText = decodeBase64ToText(base64)
+    } else if (lowerName.endsWith('.docx') || mediaType.includes('wordprocessingml')) {
+      const mammoth = await import('mammoth')
+      const arrayBuffer = base64ToArrayBuffer(base64)
+      const result = await mammoth.extractRawText({ arrayBuffer })
+      extractedText = result.value?.trim() || '[No text extracted from DOCX]'
+    } else if (lowerName.endsWith('.xlsx') || mediaType.includes('spreadsheetml')) {
+      const XLSXmod = await import('xlsx')
+      const arrayBuffer = base64ToArrayBuffer(base64)
+      const workbook = XLSXmod.read(arrayBuffer, { type: 'array' })
+      extractedText = convertXlsxToText(workbook, XLSXmod)
+    }
+    // For PDF we intentionally leave extractedText undefined so Gemini/Claude can use native PDF support
+  } catch (err) {
+    console.warn('Text extraction failed for', file.name, err)
+    extractedText = `[Could not extract text from ${file.name}]`
+  }
+
+  // Truncate very long extracted text to protect context
+  if (extractedText && extractedText.length > 80000) {
+    extractedText = extractedText.slice(0, 80000) + '\n\n[... content truncated ...]'
+  }
+
+  return {
+    kind: 'file',
+    mediaType,
+    data: base64,
+    name: file.name,
+    originalSize: file.size,
+    extractedText,
+  }
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      const match = result.match(/^data:(.+);base64,(.+)$/)
+      if (!match) return reject(new Error('Failed to read file'))
+      resolve(match[2])
+    }
+    reader.onerror = () => reject(new Error('Failed to read file'))
+    reader.readAsDataURL(file)
+  })
+}
+
+function decodeBase64ToText(base64: string): string {
+  try {
+    return atob(base64)
+  } catch {
+    return '[Unable to decode file content]'
+  }
+}
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return bytes.buffer
+}
+
+function getMimeFromName(name: string): string {
+  const lower = name.toLowerCase()
+  if (lower.endsWith('.pdf')) return 'application/pdf'
+  if (lower.endsWith('.csv')) return 'text/csv'
+  if (lower.endsWith('.json')) return 'application/json'
+  if (lower.endsWith('.txt')) return 'text/plain'
+  if (lower.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  if (lower.endsWith('.xlsx')) return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  return 'application/octet-stream'
+}
+
+function convertXlsxToText(workbook: any, XLSXmod: any): string {
+  const sheets = workbook.SheetNames
+  let text = ''
+  for (const sheetName of sheets) {
+    const sheet = workbook.Sheets[sheetName]
+    const json = XLSXmod.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+    text += `=== Sheet: ${sheetName} ===\n`
+    for (const row of json) {
+      text += (row as any[]).join('\t') + '\n'
+    }
+    text += '\n'
+  }
+  return text.trim() || '[No data found in spreadsheet]'
+}
+
+function isSupportedFile(file: File): boolean {
+  const name = file.name.toLowerCase()
+  const type = file.type
+  return (
+    type.startsWith('image/') ||
+    type === 'application/pdf' ||
+    type === 'text/csv' ||
+    type === 'text/plain' ||
+    type === 'application/json' ||
+    type.includes('wordprocessingml') ||
+    type.includes('spreadsheetml') ||
+    name.endsWith('.pdf') ||
+    name.endsWith('.csv') ||
+    name.endsWith('.txt') ||
+    name.endsWith('.json') ||
+    name.endsWith('.docx') ||
+    name.endsWith('.xlsx')
+  )
+}
+
+async function processAnyFileForUpload(
+  file: File,
+  maxSize = 1280,
+  quality = 0.85
+): Promise<
+  | { kind: 'image'; mediaType: string; data: string; preview: string; originalSize: number; compressedSize: number }
+  | { kind: 'file'; mediaType: string; data: string; name: string; originalSize: number; extractedText?: string }
+> {
+  if (file.type.startsWith('image/')) {
+    return processImageForUpload(file, maxSize, quality)
+  }
+  return processFileForUpload(file)
 }
 
 export default function App() {
@@ -83,14 +239,26 @@ export default function App() {
   const [webSearch, setWebSearch] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<
-    Array<{
-      id: string
-      mediaType: string
-      data: string
-      preview: string
-      originalSize: number
-      compressedSize: number
-    }>
+    Array<
+      | {
+          id: string
+          kind: 'image'
+          mediaType: string
+          data: string
+          preview: string
+          originalSize: number
+          compressedSize: number
+        }
+      | {
+          id: string
+          kind: 'file'
+          mediaType: string
+          data: string
+          name: string
+          originalSize: number
+          extractedText?: string
+        }
+    >
   >([])
 
   const settings = useSettings()
@@ -188,7 +356,12 @@ export default function App() {
     const text = input.trim()
     if ((!text && attachments.length === 0) || isStreaming || !hasKey) return
 
-    const atts = attachments.map((a) => ({ mediaType: a.mediaType, data: a.data }))
+    const atts = attachments.map((a) => ({
+      mediaType: a.mediaType,
+      data: a.data,
+      name: a.kind === 'file' ? a.name : undefined,
+      extractedText: a.kind === 'file' ? a.extractedText : undefined,
+    }))
 
     setInput('')
     setAttachments([])
@@ -557,6 +730,19 @@ export default function App() {
                                   className="max-h-64 rounded-lg mb-2 border border-white/20"
                                 />
                               ))}
+                            {/* Files (PDF, CSV, etc.) */}
+                            {m.content
+                              .filter((p): p is { type: 'file'; mediaType: string; data: string; name?: string } => p.type === 'file')
+                              .map((f, i) => (
+                                <div
+                                  key={i}
+                                  className="flex items-center gap-2 mb-2 rounded-lg border border-white/30 bg-white/10 px-3 py-1.5 text-sm"
+                                >
+                                  <FileText className="size-4 shrink-0" />
+                                  <span className="truncate">{f.name || 'Attached file'}</span>
+                                  <span className="opacity-60 text-xs">({f.mediaType.split('/').pop()})</span>
+                                </div>
+                              ))}
                             {/* Text */}
                             <div className="whitespace-pre-wrap message-text">
                               {getTextFromContent(m.content)}
@@ -632,9 +818,7 @@ export default function App() {
 
               if (!hasKey || isStreaming) return
 
-              const droppedFiles = Array.from(e.dataTransfer.files).filter((f) =>
-                f.type.startsWith('image/')
-              )
+              const droppedFiles = Array.from(e.dataTransfer.files).filter((f) => isSupportedFile(f))
               if (droppedFiles.length === 0) return
 
               const qualityPreset = useSettings.getState().imageQualityPreset ?? 'balanced'
@@ -646,7 +830,7 @@ export default function App() {
               const { maxSize, quality } = presets[qualityPreset]
 
               const newAtts = await Promise.all(
-                droppedFiles.map((f) => processImageForUpload(f, maxSize, quality))
+                droppedFiles.map((f) => processAnyFileForUpload(f, maxSize, quality))
               )
               setAttachments((prev) => [
                 ...prev,
@@ -659,19 +843,30 @@ export default function App() {
               {attachments.length > 0 && (
                 <div className="flex gap-2 mb-2 flex-wrap">
                   {attachments.map((att) => {
-                    const savings = Math.round(
-                      ((att.originalSize - att.compressedSize) / att.originalSize) * 100
-                    )
+                    const isImage = att.kind === 'image'
+                    const savings = isImage
+                      ? Math.round(((att.originalSize - att.compressedSize) / att.originalSize) * 100)
+                      : 0
                     return (
                       <div key={att.id} className="relative group">
-                        <img
-                          src={att.preview}
-                          alt="preview"
-                          className="h-14 w-14 object-cover rounded-lg border"
-                        />
+                        {isImage ? (
+                          <img
+                            src={att.preview}
+                            alt="preview"
+                            className="h-14 w-14 object-cover rounded-lg border"
+                          />
+                        ) : (
+                          <div className="h-14 w-14 flex flex-col items-center justify-center rounded-lg border bg-muted text-muted-foreground">
+                            <FileText className="size-6" />
+                            <div className="text-[8px] mt-0.5 w-12 truncate text-center">{att.name.split('.').pop()?.toUpperCase()}</div>
+                          </div>
+                        )}
                         <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-[9px] text-white px-1 rounded-b-lg text-center tabular-nums">
-                          {Math.round(att.compressedSize / 1024)}KB
-                          {savings > 0 && <span className="text-green-400"> (-{savings}%)</span>}
+                          {Math.round(att.originalSize / 1024)}KB
+                          {isImage && savings > 0 && <span className="text-green-400"> (-{savings}%)</span>}
+                          {!isImage && att.name && (
+                            <span className="opacity-75"> {att.name.length > 12 ? att.name.slice(0, 8) + '…' : att.name}</span>
+                          )}
                         </div>
                         <button
                           onClick={() =>
@@ -696,7 +891,7 @@ export default function App() {
                     onClick={() => {
                       const input = document.createElement('input')
                       input.type = 'file'
-                      input.accept = 'image/*'
+                      input.accept = 'image/*,.pdf,.csv,.txt,.json,.docx,.xlsx,application/pdf,text/csv,text/plain,application/json'
                       input.multiple = true
                       input.onchange = async (e) => {
                         const files = Array.from((e.target as HTMLInputElement).files || [])
@@ -711,7 +906,7 @@ export default function App() {
                         const { maxSize, quality } = presets[qualityPreset]
 
                         const newAtts = await Promise.all(
-                          files.map((f) => processImageForUpload(f, maxSize, quality))
+                          files.map((f) => processAnyFileForUpload(f, maxSize, quality))
                         )
                         setAttachments((prev) => [
                           ...prev,
@@ -721,7 +916,7 @@ export default function App() {
                       input.click()
                     }}
                     disabled={isStreaming || !hasKey}
-                    title="Attach photos"
+                    title="Attach images, PDFs, CSVs, DOCX, XLSX, JSON, TXT"
                     className="h-full px-3 rounded-2xl"
                   >
                     <Paperclip className="size-4" />

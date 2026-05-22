@@ -34,6 +34,24 @@ export async function* streamClaude(req: StreamRequest): AsyncGenerator<StreamEv
             },
           };
         }
+        if (part.type === 'file') {
+          if (part.mediaType === 'application/pdf') {
+            return {
+              type: 'document',
+              source: {
+                type: 'base64',
+                media_type: 'application/pdf',
+                data: part.data,
+              },
+            };
+          }
+          // Use pre-extracted text when available (docx, xlsx, json, etc.), otherwise decode
+          const content = part.extractedText || (() => {
+            try { return atob(part.data); } catch { return '[Unable to decode file content]'; }
+          })();
+          const header = `Attached file: ${part.name || 'document'} (${part.mediaType})\n\n`;
+          return { type: 'text', text: header + content };
+        }
         return part;
       });
 

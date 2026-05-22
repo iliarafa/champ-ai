@@ -413,7 +413,7 @@ export function SettingsModal({ open, onOpenChange }: Props) {
             <h3 className="font-semibold text-foreground mb-3 text-base">Interface &amp; Chatting</h3>
             <ul className="list-disc pl-5 space-y-2">
               <li><strong>Projects sidebar</strong> — Organize your conversations into folders. Click a project to filter the chat list.</li>
-              <li><strong>Image attachments</strong> — Click the paperclip or drag images into the chat. Use the Image Quality setting in Settings to control size vs quality.</li>
+              <li><strong>Attachments</strong> — Click the paperclip or drag images, PDFs, CSVs, DOCX, XLSX, JSON or TXT files into the chat. Text is extracted from Office files for best compatibility across providers.</li>
               <li><strong>Web Search</strong> — Toggle the globe icon for real-time web search (currently works best with Grok).</li>
               <li><strong>Edit &amp; Resend</strong> — Hover over your messages to edit previous prompts.</li>
               <li><strong>Regenerate</strong> — After an assistant response, hover to reveal the Regenerate button.</li>

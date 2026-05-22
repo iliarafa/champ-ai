@@ -105,6 +105,12 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
     const file = e.dataTransfer.files[0]
     if (!file) return
 
+    const lower = file.name.toLowerCase()
+    if (lower.endsWith('.pdf') || lower.endsWith('.csv') || lower.endsWith('.txt') || lower.endsWith('.json') || lower.endsWith('.docx') || lower.endsWith('.xlsx')) {
+      setError('Office and data files (PDF, CSV, DOCX, XLSX, etc.) are supported as chat attachments (paperclip), not for importing shared threads. Please use a .md export file here.')
+      return
+    }
+
     const reader = new FileReader()
     reader.onload = (ev) => {
       const text = (ev.target?.result as string) || ''
@@ -130,6 +136,13 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+
+    const lower = file.name.toLowerCase()
+    if (lower.endsWith('.pdf') || lower.endsWith('.csv') || lower.endsWith('.txt') || lower.endsWith('.json') || lower.endsWith('.docx') || lower.endsWith('.xlsx')) {
+      setError('Office and data files (PDF, CSV, DOCX, XLSX, etc.) are supported as chat attachments (paperclip), not for importing shared threads. Please use a .md export file here.')
+      e.target.value = ''
+      return
+    }
 
     const reader = new FileReader()
     reader.onload = (ev) => {
@@ -176,14 +189,14 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
                 <div>
                   <div className="font-medium">Drop a .md file here</div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    or click to choose a Markdown file
+                    or click to choose a Markdown export (PDF, DOCX, XLSX, CSV etc. supported for chat attachments)
                   </div>
                 </div>
               </div>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".md,.markdown,text/markdown"
+                accept=".md,.markdown,text/markdown,.pdf,.csv,.txt,.json,.docx,.xlsx,application/pdf,text/csv,application/json"
                 onChange={handleFileSelect}
                 className="hidden"
               />

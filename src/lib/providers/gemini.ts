@@ -17,7 +17,7 @@ export async function* streamGemini(req: StreamRequest): AsyncGenerator<StreamEv
         m.content.forEach(part => {
           if (part.type === 'text') {
             parts.push({ text: part.text });
-          } else if (part.type === 'image') {
+          } else if (part.type === 'image' || part.type === 'file') {
             parts.push({
               inlineData: {
                 mimeType: part.mediaType,

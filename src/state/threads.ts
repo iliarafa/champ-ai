@@ -43,7 +43,7 @@ export interface ThreadsState {
     text: string,
     opts?: {
       webSearch?: boolean
-      attachments?: Array<{ mediaType: string; data: string }>
+      attachments?: Array<{ mediaType: string; data: string; name?: string; extractedText?: string }>
     }
   ) => Promise<void>
   cancel: () => void
@@ -204,7 +204,18 @@ export const useThreads = create<ThreadsState>((set, get) => ({
     const userContent: MessageContentPart[] = []
     if (trimmed) userContent.push({ type: 'text', text: trimmed })
     attachments.forEach((att) => {
-      userContent.push({ type: 'image', mediaType: att.mediaType, data: att.data })
+      const isImage = att.mediaType.startsWith('image/') && !att.name
+      if (isImage) {
+        userContent.push({ type: 'image', mediaType: att.mediaType, data: att.data })
+      } else {
+        userContent.push({
+          type: 'file',
+          mediaType: att.mediaType,
+          data: att.data,
+          name: att.name,
+          extractedText: att.extractedText,
+        })
+      }
     })
 
     const userMsg: Message = {

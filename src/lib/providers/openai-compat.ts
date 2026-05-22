@@ -38,6 +38,15 @@ export async function* streamOpenAICompat(req: StreamRequest): AsyncGenerator<St
           },
         }
       }
+      if (part.type === 'file') {
+        // Grok fallback: prefer pre-extracted text (from docx/xlsx/json etc.) when available.
+        // Otherwise fall back to decoding the original bytes.
+        const content = part.extractedText || (() => {
+          try { return atob(part.data); } catch { return '[binary content]'; }
+        })();
+        const header = `Attached file: ${part.name || 'document'} (${part.mediaType})\n\n`;
+        return { type: 'text', text: header + content };
+      }
       return part
     })
 
@@ -58,8 +67,13 @@ export async function* streamOpenAICompat(req: StreamRequest): AsyncGenerator<St
   }
 
   // Web search support (primarily for xAI/Grok)
+  // xAI currently recommends search_parameters for Grok models.
+  // Using the tools/live_search format has been returning 410 for some users.
   if (req.webSearchEnabled) {
-    body.search_parameters = { mode: 'on' }
+    body.search_parameters = {
+      mode: "on",
+      sources: ["web", "x"],
+    }
   }
 
   const res = await fetch(url, {
@@ -77,10 +91,20 @@ export async function* streamOpenAICompat(req: StreamRequest): AsyncGenerator<St
     let msg = `Request failed (${res.status})`
     try {
       const j = JSON.parse(text)
-      if (j?.error?.message) msg = j.error.message
+      if (j?.error?.message) {
+        msg = j.error.message
+      } else if (text) {
+        msg = `${msg}: ${text.slice(0, 300)}`
+      }
     } catch {
-      if (text) msg = text.slice(0, 200)
+      if (text) msg = `${msg}: ${text.slice(0, 300)}`
     }
+
+    // Give a friendlier message for search-related 410s
+    if (res.status === 410 && req.webSearchEnabled) {
+      msg = "Web search is currently not available on your xAI account (received 410). This feature is being rolled out gradually and may require a paid plan. You can disable the globe icon for now."
+    }
+
     throw new ProviderError(msg, { status: res.status, body: text })
   }
 

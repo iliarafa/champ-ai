@@ -41,6 +41,7 @@ export type MessageRole = 'user' | 'assistant'
 export type MessageContentPart =
   | { type: 'text'; text: string }
   | { type: 'image'; mediaType: string; data: string } // base64 without data: prefix
+  | { type: 'file'; mediaType: string; data: string; name?: string; extractedText?: string } // PDF, CSV, DOCX, XLSX, etc. — base64 of original + optional extracted text for fallback providers
 
 export interface Message {
   id: string
